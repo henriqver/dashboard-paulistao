@@ -373,8 +373,9 @@
             return acc.toLowerCase();
         }
 
-        function generateGroupKey(text, dateObj) {
-            let cleanText = (text || '').toLowerCase()
+        function cleanTextContent(text) {
+            if (!text) return '';
+            return text.toLowerCase()
                 .replace(/https?:\/\/\S+/g, '')       // Remove qualquer URL (incluindo t.co)
                 .replace(/#\w+/g, '')           
                 .replace(/@\w+/g, '')           
@@ -382,9 +383,11 @@
                 .replace(/[\r\n]+/g, ' ')       // Converte quebras de linha em espaços
                 .replace(/[^\w\s]/gi, '')       
                 .replace(/\s+/g, ' ')           // Padroniza múltiplos espaços para um único
-                .trim()
-                .substring(0, 50);              
-            
+                .trim();
+        }
+
+        function generateGroupKey(text, dateObj) {
+            let cleanText = cleanTextContent(text).substring(0, 50);              
             let d = (dateObj && !isNaN(dateObj)) ? dateObj.toLocaleDateString('pt-BR') : '';
             return cleanText + '_' + d;
         }
@@ -440,7 +443,7 @@
 
                 let rawAcc = row['Nome de usuário da conta'] || row['Nome da Página'] || fallbackAccount;
                 let url = row['Link permanente'] || '';
-                let desc = row['Descrição'] || row['Título'] || '';
+                let rawDesc = row['Descrição'] || row['Título'] || '';
                 
                 let urlAcc = extractAccountFromUrl(url);
                 let account = standardizeAccountName(urlAcc ? urlAcc : rawAcc);
@@ -460,8 +463,11 @@
                 let saves = safeParseInt(row['Salvamentos']);
                 let totalInteracoes = likes + comments + shares + saves;
 
-                if (!desc || desc.trim() === '') return;
+                if (!rawDesc || rawDesc.trim() === '') return;
                 
+                // Limpa o link da t.co se houver na descrição original exibida
+                let desc = rawDesc;
+
                 const tags = desc.match(/#[\wÀ-ÿ]+/g);
                 if(tags) tags.forEach(t => hashtagsSet.add(t));
                 accountsSet.add(account);
@@ -481,10 +487,13 @@
             
             data.forEach(row => {
                 let url = row['Link'] || row['Video Link'] || row['Tweet permalink'] || row['Postar link'] || row['Link para o vídeo'] || row['Link do Tweet'] || row['URL'] || '';
-                let desc = row['Video Title'] || row['Tweet text'] || row['Texto'] || row['Texto do post'] || row['Título do vídeo'] || row['Texto do Tweet'] || '';
+                let rawDesc = row['Video Title'] || row['Tweet text'] || row['Texto'] || row['Texto do post'] || row['Título do vídeo'] || row['Texto do Tweet'] || '';
                 let dateStr = row['Create Time'] || row['time'] || row['Data'] || row['Hora da publicação'] || row['Hora'] || '';
                 
-                if(!url || !desc) return; 
+                if(!url || !rawDesc) return; 
+
+                // Remove imediatamente a URL t.co do texto do Twitter na importação
+                let desc = rawDesc.replace(/https?:\/\/t\.co\/\S+/g, '').trim();
 
                 let rawAcc = extractAccountFromUrl(url) || fallbackAccount;
                 let account = standardizeAccountName(rawAcc);
