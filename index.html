@@ -375,7 +375,7 @@
 
         function generateGroupKey(text, dateObj) {
             let cleanText = (text || '').toLowerCase()
-                .replace(/https?:\/\/\S+/g, '') 
+                .replace(/https?:\/\/\S+/g, '')       // Remove qualquer URL (incluindo t.co)
                 .replace(/#\w+/g, '')           
                 .replace(/@\w+/g, '')           
                 .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
