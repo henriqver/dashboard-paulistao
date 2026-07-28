@@ -102,7 +102,7 @@
                     <span class="text-xs font-bold text-slate-400 uppercase">Período:</span>
                     <input type="date" id="date-start" value="2026-06-01" class="w-32 p-1.5 border border-slate-200 rounded-lg outline-none focus:border-indigo-500 text-sm text-slate-600">
                     <span class="text-slate-400 text-sm">até</span>
-                    <input type="date" id="date-end" value="2026-06-30" class="w-32 p-1.5 border border-slate-200 rounded-lg outline-none focus:border-indigo-500 text-sm text-slate-600">
+                    <input type="date" id="date-end" value="2026-07-31" class="w-32 p-1.5 border border-slate-200 rounded-lg outline-none focus:border-indigo-500 text-sm text-slate-600">
                     
                     <div class="flex gap-2 ml-1 pl-3 border-l border-slate-200">
                         <button onclick="setQuickDate(15)" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition">15 dias</button>
@@ -290,8 +290,12 @@
             });
         }
 
-        // Inicia a sincronização assim que a página carrega
+        // Configura datas iniciais e inicia sincronização
         window.addEventListener('DOMContentLoaded', () => {
+            const today = new Date();
+            const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+            document.getElementById('date-end').value = todayStr;
+            
             carregarDadosDoGithub();
             lucide.createIcons();
         });
@@ -468,8 +472,8 @@
             const parsedList = [];
             
             data.forEach(row => {
-                let url = row['Link'] || row['Video Link'] || row['Tweet permalink'] || row['Link para o vídeo'] || row['Link do Tweet'] || row['URL'] || '';
-                let desc = row['Video Title'] || row['Tweet text'] || row['Texto'] || row['Título do vídeo'] || row['Texto do Tweet'] || '';
+                let url = row['Link'] || row['Video Link'] || row['Tweet permalink'] || row['Postar link'] || row['Link para o vídeo'] || row['Link do Tweet'] || row['URL'] || '';
+                let desc = row['Video Title'] || row['Tweet text'] || row['Texto'] || row['Texto do post'] || row['Título do vídeo'] || row['Texto do Tweet'] || '';
                 let dateStr = row['Create Time'] || row['time'] || row['Data'] || row['Hora da publicação'] || row['Hora'] || '';
                 
                 if(!url || !desc) return; 
@@ -477,16 +481,23 @@
                 let rawAcc = extractAccountFromUrl(url) || fallbackAccount;
                 let account = standardizeAccountName(rawAcc);
                 
-                let safeDateStr = dateStr.replace(/-/g, '/');
-                let dateObj = new Date(safeDateStr);
-                if (isNaN(dateObj.getTime())) dateObj = new Date(0);
+                // Trata as datas no formato do Twitter export (ex: Tue, Jun 30, 2026)
+                let dateObj;
+                let parsedDate = Date.parse(dateStr);
+                if (!isNaN(parsedDate)) {
+                    dateObj = new Date(parsedDate);
+                } else {
+                    let safeDateStr = dateStr.replace(/-/g, '/');
+                    dateObj = new Date(safeDateStr);
+                    if (isNaN(dateObj.getTime())) dateObj = new Date(0);
+                }
 
                 let type = platform === 'tiktok' ? 'Vídeo' : 'Imagem';
 
                 let views = safeParseInt(row['Views'] || row['impressions'] || row['Visualizações de vídeo'] || row['Visualizações do vídeo'] || row['Impressões']);
                 let likes = safeParseInt(row['Likes'] || row['curtidas'] || row['Curtidas']);
                 let comments = safeParseInt(row['Comments'] || row['replies'] || row['respostas'] || row['Comentários'] || row['Respostas']);
-                let shares = safeParseInt(row['Shares'] || row['retweets'] || row['compartilhamentos'] || row['Compartilhamentos'] || row['Retweets']);
+                let shares = safeParseInt(row['Shares'] || row['retweets'] || row['compartilhamentos'] || row['Compartilhamentos'] || row['Retweets'] || row['Reposts']);
                 let saves = safeParseInt(row['Saves'] || row['Itens salvos'] || row['Adicionar aos Favoritos'] || row['Favoritos'] || 0);
 
                 let totalInteracoes = likes + comments + shares + saves;
