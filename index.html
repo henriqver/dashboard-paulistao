@@ -380,15 +380,18 @@
                 .replace(/@\w+/g, '')                 // Remove citações @
                 .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
                 .replace(/[\r\n]+/g, ' ')             // Converte quebras de linha em espaços
-                .replace(/[^\w\s]/gi, '')             // Remove símbolos e pontuações (o "#" some, mas as palavras da hashtag ficam)
+                .replace(/[^\w\s]/gi, '')             // Remove símbolos e pontuações
                 .replace(/\s+/g, ' ')                 // Padroniza múltiplos espaços para um único
                 .trim();
         }
 
         function generateGroupKey(text, dateObj) {
-            let cleanText = cleanTextContent(text).substring(0, 50);              
-            let d = (dateObj && !isNaN(dateObj)) ? dateObj.toLocaleDateString('pt-BR') : '';
-            return cleanText + '_' + d;
+            // Removemos a data da chave de agrupamento!
+            // Diferenças de fuso horário entre as exportações (Meta salva em UTC, Twitter em horário local)
+            // faziam o mesmo post ser associado a dias diferentes, quebrando a unificação.
+            // Ao usar uma parte generosa do texto (80 caracteres), garantimos que posts iguais se unam.
+            let cleanText = cleanTextContent(text).substring(0, 80);              
+            return cleanText;
         }
 
         function extractAccountFromUrl(url) {
@@ -464,7 +467,6 @@
 
                 if (!rawDesc || rawDesc.trim() === '') return;
                 
-                // Limpa o link da t.co se houver na descrição original exibida
                 let desc = rawDesc;
 
                 const tags = desc.match(/#[\wÀ-ÿ]+/g);
@@ -625,7 +627,6 @@
                 
                 g.types = new Set([finalType]);
 
-                // Aplica limpeza também na descrição do grupo para a busca funcionar perfeitamente
                 const cleanGroupDesc = cleanTextContent(g.desc);
 
                 if (g.date < startDate || g.date > endDate) return;
