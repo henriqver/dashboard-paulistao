@@ -377,12 +377,11 @@
             if (!text) return '';
             return text.toLowerCase()
                 .replace(/https?:\/\/\S+/g, '')       // Remove qualquer URL (incluindo t.co)
-                .replace(/#\w+/g, '')           
-                .replace(/@\w+/g, '')           
+                .replace(/@\w+/g, '')                 // Remove citações @
                 .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
-                .replace(/[\r\n]+/g, ' ')       // Converte quebras de linha em espaços
-                .replace(/[^\w\s]/gi, '')       
-                .replace(/\s+/g, ' ')           // Padroniza múltiplos espaços para um único
+                .replace(/[\r\n]+/g, ' ')             // Converte quebras de linha em espaços
+                .replace(/[^\w\s]/gi, '')             // Remove símbolos e pontuações (o "#" some, mas as palavras da hashtag ficam)
+                .replace(/\s+/g, ' ')                 // Padroniza múltiplos espaços para um único
                 .trim();
         }
 
@@ -598,8 +597,10 @@
                 }
             });
 
-            // 2. Coletar valores dos filtros
-            const search = document.getElementById('searchInput').value.toLowerCase();
+            // 2. Coletar valores dos filtros com busca limpa
+            const searchInputRaw = document.getElementById('searchInput').value;
+            const search = cleanTextContent(searchInputRaw);
+            
             const sortBy = document.getElementById('sortOrder').value;
             const formatSel = document.getElementById('formatFilter').value;
             const accountSel = document.getElementById('accountFilter').value;
@@ -624,8 +625,11 @@
                 
                 g.types = new Set([finalType]);
 
+                // Aplica limpeza também na descrição do grupo para a busca funcionar perfeitamente
+                const cleanGroupDesc = cleanTextContent(g.desc);
+
                 if (g.date < startDate || g.date > endDate) return;
-                if (search && !g.desc.toLowerCase().includes(search)) return;
+                if (search && !cleanGroupDesc.includes(search)) return;
                 if (formatSel !== 'Todos' && finalType !== formatSel) return;
                 if (accountSel !== 'Todas' && !g.accounts.has(accountSel)) return;
 
