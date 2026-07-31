@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Petrobras</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+    <style>
+        .plat-bg-instagram { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); }
+        .plat-bg-facebook { background-color: #1877F2; }
+        .plat-bg-tiktok { background-color: #000000; }
+        .plat-bg-x { background-color: #0f1419; }
+        .plat-bg-multi { background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%); }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 p-4 sm:p-6 min-h-screen relative">
+
+    <div class="max-w-6xl mx-auto space-y-6 pb-24">
+        
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0">
+                    <i data-lucide="droplet" class="w-7 h-7"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-900">Dashboard Petrobras</h1>
+                    <p class="text-sm text-slate-500 font-medium">Relatório Exclusivo de Entregas</p>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-2 w-full lg:w-auto lg:text-right">
+                <label class="text-xs text-slate-400 uppercase tracking-wider font-bold mb-1">Status dos Dados</label>
+                <div id="sync-status" class="flex items-center justify-end gap-2 text-sm font-medium text-amber-600 bg-amber-50 px-4 py-2.5 rounded-xl border border-amber-200 transition-colors">
+                    <i data-lucide="refresh-cw" class="w-4 h-4 animate-spin"></i> Conectando ao banco de dados...
+                </div>
+                <p id="sync-details" class="text-[10px] text-slate-500">Iniciando leitura das pastas...</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
+                <div class="flex items-center gap-1.5 mb-2 text-slate-400">
+                    <i data-lucide="eye" class="w-4 h-4"></i>
+                    <span class="text-[10px] font-bold uppercase tracking-wider">Views</span>
+                </div>
+                <p id="kpi-views" class="text-xl font-black text-slate-800">0</p>
+            </div>
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
+                <div class="flex items-center gap-1.5 mb-2 text-rose-500">
+                    <i data-lucide="activity" class="w-4 h-4"></i>
+                    <span class="text-[10px] font-bold uppercase tracking-wider">Interações</span>
+                </div>
+                <p id="kpi-interactions" class="text-xl font-black text-slate-800">0</p>
+            </div>
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
+                <div class="flex items-center gap-1.5 mb-2 text-rose-400">
+                    <i data-lucide="heart" class="w-4 h-4"></i>
+                    <span class="text-[10px] font-bold uppercase tracking-wider">Curtidas</span>
+                </div>
+                <p id="kpi-likes" class="text-xl font-black text-slate-800">0</p>
+            </div>
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
+                <div class="flex items-center gap-1.5 mb-2 text-emerald-400">
+                    <i data-lucide="message-circle" class="w-4 h-4"></i>
+                    <span class="text-[10px] font-bold uppercase tracking-wider">Coment.</span>
+                </div>
+                <p id="kpi-comments" class="text-xl font-black text-slate-800">0</p>
+            </div>
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
+                <div class="flex items-center gap-1.5 mb-2 text-blue-400">
+                    <i data-lucide="share-2" class="w-4 h-4"></i>
+                    <span class="text-[10px] font-bold uppercase tracking-wider">Compart.</span>
+                </div>
+                <p id="kpi-shares" class="text-xl font-black text-slate-800">0</p>
+            </div>
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
+                <div class="flex items-center gap-1.5 mb-2 text-sky-400">
+                    <i data-lucide="repeat" class="w-4 h-4"></i>
+                    <span class="text-[10px] font-bold uppercase tracking-wider">Retweets</span>
+                </div>
+                <p id="kpi-retweets" class="text-xl font-black text-slate-800">0</p>
+            </div>
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
+                <div class="flex items-center gap-1.5 mb-2 text-amber-400">
+                    <i data-lucide="bookmark" class="w-4 h-4"></i>
+                    <span class="text-[10px] font-bold uppercase tracking-wider">Salvos</span>
+                </div>
+                <p id="kpi-saves" class="text-xl font-black text-slate-800">0</p>
+            </div>
+        </div>
+
+        <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col space-y-4">
+            
+            <div class="flex flex-col xl:flex-row gap-4 xl:items-center border-b border-slate-100 pb-4">
+                <div class="flex flex-wrap gap-2 flex-1">
+                    <span class="text-xs font-bold text-slate-400 uppercase flex items-center mr-2">Plataformas:</span>
+                    <button onclick="togglePlatform('instagram')" id="btn-plat-instagram" class="px-3 py-1.5 rounded-lg border bg-indigo-600 text-white font-medium text-sm transition">Instagram</button>
+                    <button onclick="togglePlatform('facebook')" id="btn-plat-facebook" class="px-3 py-1.5 rounded-lg border bg-indigo-600 text-white font-medium text-sm transition">Facebook</button>
+                    <button onclick="togglePlatform('tiktok')" id="btn-plat-tiktok" class="px-3 py-1.5 rounded-lg border bg-indigo-600 text-white font-medium text-sm transition">TikTok</button>
+                    <button onclick="togglePlatform('x')" id="btn-plat-x" class="px-3 py-1.5 rounded-lg border bg-indigo-600 text-white font-medium text-sm transition">X (Twitter)</button>
+                </div>
+                
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-xs font-bold text-slate-400 uppercase">Período:</span>
+                    <input type="date" id="date-start" value="" class="w-32 p-1.5 border border-slate-200 rounded-lg outline-none focus:border-indigo-500 text-sm text-slate-600">
+                    <span class="text-slate-400 text-sm">até</span>
+                    <input type="date" id="date-end" value="" class="w-32 p-1.5 border border-slate-200 rounded-lg outline-none focus:border-indigo-500 text-sm text-slate-600">
+                    
+                    <div class="flex gap-2 ml-1 pl-3 border-l border-slate-200">
+                        <button onclick="setQuickDate(15)" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition">15 dias</button>
+                        <button onclick="setQuickDate(30)" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition">30 dias</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex-1 relative">
+                    <i data-lucide="search" class="absolute left-3 top-3.5 text-slate-400 w-4 h-4"></i>
+                    <input type="text" id="searchInput" list="hashtag-suggestions" placeholder="Buscar palavra extra..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 transition font-medium text-slate-700">
+                    <datalist id="hashtag-suggestions"></datalist>
+                </div>
+
+                <div class="relative w-full md:w-56 flex-shrink-0">
+                    <i data-lucide="bar-chart-2" class="absolute left-3 top-3.5 text-slate-400 w-4 h-4"></i>
+                    <select id="sortOrder" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 font-medium text-slate-700 appearance-none">
+                        <option value="totalInteracoes">Ordem: Interações</option>
+                        <option value="date">Ordem: Mais Recentes</option>
+                        <option value="views">Ordem: Visualizações</option>
+                        <option value="likes">Ordem: Curtidas</option>
+                        <option value="comments">Ordem: Comentários</option>
+                        <option value="shares">Ordem: Compartilh.</option>
+                        <option value="retweets">Ordem: Retweets</option>
+                        <option value="saves">Ordem: Salvamentos</option>
+                    </select>
+                </div>
+                
+                <div class="relative w-full md:w-48 flex-shrink-0">
+                    <i data-lucide="layout" class="absolute left-3 top-3.5 text-slate-400 w-4 h-4"></i>
+                    <select id="formatFilter" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 font-medium text-slate-700 appearance-none">
+                        <option value="Todos">Tipos de Post</option>
+                    </select>
+                </div>
+
+                <div class="relative w-full md:w-48 flex-shrink-0">
+                    <i data-lucide="user" class="absolute left-3 top-3.5 text-slate-400 w-4 h-4"></i>
+                    <select id="accountFilter" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 font-medium text-slate-700 appearance-none">
+                        <!-- Fixado via JavaScript -->
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                <h2 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+                    <i data-lucide="trophy" class="text-amber-500"></i> Galeria de Posts Petrobras
+                </h2>
+                <div class="flex items-center gap-4">
+                    <span class="text-sm font-medium text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-100" id="post-count">0 posts</span>
+                </div>
+            </div>
+            
+            <div id="rankingContainer" class="divide-y divide-slate-100">
+                <div class="p-12 text-center text-slate-400">
+                    <i data-lucide="database" class="w-12 h-12 mx-auto mb-3 opacity-20"></i>
+                    <p>Sincronizando dados com o servidor...</p>
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
+                <button id="btn-prev" onclick="changePage(-1)" class="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                    Anterior
+                </button>
+                <span class="text-sm text-slate-500 font-medium">Página <span id="current-page">1</span> de <span id="total-pages">1</span></span>
+                <button id="btn-next" onclick="changePage(1)" class="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                    Próxima
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="selection-bar" class="hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white px-4 py-4 md:px-8 md:py-4 rounded-2xl shadow-2xl items-center gap-4 md:gap-8 z-50 w-[95%] max-w-5xl border border-slate-700 transition-all duration-300">
+        <div class="flex flex-col items-center flex-shrink-0">
+            <span class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Selecionados</span>
+            <span class="text-xl md:text-2xl font-black text-indigo-400"><span id="sel-count">0</span></span>
+        </div>
+        
+        <div class="h-10 w-px bg-slate-700 hidden md:block"></div>
+        
+        <div class="flex gap-4 md:gap-8 flex-1 overflow-x-auto hide-scrollbar snap-x">
+            <div class="flex flex-col min-w-max snap-start">
+                <span class="text-[10px] text-slate-400 uppercase font-bold">Interações</span>
+                <span class="text-lg md:text-xl font-bold" id="sel-int">0</span>
+            </div>
+            <div class="flex flex-col min-w-max snap-start">
+                <span class="text-[10px] text-slate-400 uppercase font-bold">Views</span>
+                <span class="text-lg md:text-xl font-bold" id="sel-views">0</span>
+            </div>
+            <div class="flex flex-col min-w-max snap-start">
+                <span class="text-[10px] text-slate-400 uppercase font-bold">Curtidas</span>
+                <span class="text-lg md:text-xl font-bold" id="sel-likes">0</span>
+            </div>
+            <div class="flex flex-col min-w-max snap-start">
+                <span class="text-[10px] text-slate-400 uppercase font-bold">Coment.</span>
+                <span class="text-lg md:text-xl font-bold" id="sel-comments">0</span>
+            </div>
+            <div class="flex flex-col min-w-max snap-start">
+                <span class="text-[10px] text-slate-400 uppercase font-bold">Compart.</span>
+                <span class="text-lg md:text-xl font-bold" id="sel-shares">0</span>
+            </div>
+            <div class="flex flex-col min-w-max snap-start">
+                <span class="text-[10px] text-slate-400 uppercase font-bold">Retweets</span>
+                <span class="text-lg md:text-xl font-bold text-sky-400" id="sel-retweets">0</span>
+            </div>
+        </div>
+        
+        <button onclick="clearSelection()" class="p-2 hover:bg-slate-800 rounded-xl transition flex-shrink-0" title="Limpar seleção">
+            <i data-lucide="x" class="w-6 h-6 text-slate-400"></i>
+        </button>
+    </div>
+
+    <script>
+        const REPO_OWNER = 'henriqver';
+        const REPO_NAME = 'dashboard-paulistao';
+
+        let uploadedData = {
+            instagram: [], facebook: [], tiktok: [], x: []
+        };
+        let filteredRankedData = []; 
+        let activePlatforms = ['instagram', 'facebook', 'tiktok', 'x']; 
+        let selectedPosts = new Set(); 
+        
+        const hashtagsSet = new Set();
+        const typesSet = new Set(['Imagem', 'Vídeo', 'Carrossel']);
+        const accountsSet = new Set();
+
+        let currentPage = 1;
+        const itemsPerPage = 30; // Atualizado para 30 posts por página
+
+        async function carregarDadosDoGithub() {
+            const pastas = ['instagram', 'facebook', 'tiktok', 'twitter'];
+            const statusDiv = document.getElementById('sync-status');
+            const detalhesP = document.getElementById('sync-details');
+            
+            let totalArquivosLidos = 0;
+
+            for (const pasta of pastas) {
+                try {
+                    const chavePlataforma = pasta === 'twitter' ? 'x' : pasta;
+                    detalhesP.innerText = `Lendo pasta /dados/${pasta}...`;
+                    
+                    const resposta = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/dados/${pasta}`);
+                    
+                    if (!resposta.ok) {
+                        console.warn(`Pasta dados/${pasta} não encontrada ou vazia no repositório.`);
+                        continue;
+                    }
+                    
+                    const arquivos = await resposta.json();
+                    const arquivosCSV = arquivos.filter(arquivo => arquivo.name.toLowerCase().endsWith('.csv'));
+
+                    for (const arquivo of arquivosCSV) {
+                        detalhesP.innerText = `Extraindo ${arquivo.name}...`;
+                        await baixarEProcessarCSV(arquivo.download_url, chavePlataforma, arquivo.name);
+                        totalArquivosLidos++;
+                    }
+                } catch (erro) {
+                    console.error(`Erro ao carregar dados da pasta ${pasta}:`, erro);
+                }
+            }
+
+            statusDiv.className = "flex items-center justify-end gap-2 text-sm font-medium text-emerald-600 bg-emerald-50 px-4 py-2.5 rounded-xl border border-emerald-200 transition-colors";
+            statusDiv.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4"></i> Dados Sincronizados`;
+            detalhesP.innerText = `${totalArquivosLidos} arquivos CSV carregados com sucesso.`;
+            lucide.createIcons();
+
+            updateFiltersUI();
+            applyFiltersAndGroup();
+        }
+
+        function baixarEProcessarCSV(url, plataforma, nomeArquivo) {
+            return new Promise((resolve) => {
+                Papa.parse(url, {
+                    download: true,
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(resultados) {
+                        let contaPadrao = 'Paulistão';
+                        const nomeMenor = nomeArquivo.toLowerCase();
+                        if (nomeMenor.includes('copinha')) contaPadrao = 'Copinha';
+                        else if (nomeMenor.includes('feminino') || nomeMenor.includes(' f ')) contaPadrao = 'Paulistão F';
+
+                        let novosPosts = [];
+                        if (plataforma === 'facebook' || plataforma === 'instagram') {
+                            novosPosts = processMetaCSV(resultados, plataforma, contaPadrao);
+                        } else {
+                            novosPosts = processTikTokTwitterCSV(resultados, plataforma, contaPadrao);
+                        }
+
+                        uploadedData[plataforma] = [...uploadedData[plataforma], ...novosPosts];
+                        resolve();
+                    },
+                    error: function(erro) {
+                        console.error(`Erro no PapaParse ao ler ${nomeArquivo}:`, erro);
+                        resolve(); 
+                    }
+                });
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const today = new Date();
+            const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+            
+            const start = new Date();
+            start.setDate(today.getDate() - 30);
+            const startStr = start.getFullYear() + '-' + String(start.getMonth() + 1).padStart(2, '0') + '-' + String(start.getDate()).padStart(2, '0');
+
+            document.getElementById('date-end').value = todayStr;
+            document.getElementById('date-start').value = startStr;
+            
+            carregarDadosDoGithub();
+            lucide.createIcons();
+        });
+
+        function setQuickDate(days) {
+            const end = new Date();
+            const start = new Date();
+            start.setDate(end.getDate() - days);
+            
+            const endStr = end.getFullYear() + '-' + String(end.getMonth() + 1).padStart(2, '0') + '-' + String(end.getDate()).padStart(2, '0');
+            const startStr = start.getFullYear() + '-' + String(start.getMonth() + 1).padStart(2, '0') + '-' + String(start.getDate()).padStart(2, '0');
+            
+            document.getElementById('date-end').value = endStr;
+            document.getElementById('date-start').value = startStr;
+            
+            applyFiltersAndGroup();
+        }
+
+        function togglePlatform(p) {
+            if (activePlatforms.includes(p)) activePlatforms = activePlatforms.filter(x => x !== p);
+            else activePlatforms.push(p);
+            
+            ['instagram', 'facebook', 'tiktok', 'x'].forEach(plat => {
+                const btn = document.getElementById(`btn-plat-${plat}`);
+                if (activePlatforms.includes(plat)) {
+                    btn.classList.replace('bg-slate-100', 'bg-indigo-600');
+                    btn.classList.replace('text-slate-600', 'text-white');
+                } else {
+                    btn.classList.replace('bg-indigo-600', 'bg-slate-100');
+                    btn.classList.replace('text-white', 'text-slate-600');
+                }
+            });
+            applyFiltersAndGroup();
+        }
+
+        function getPlatformSVG(platform, extraClasses = "w-4 h-4") {
+            const base = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="${extraClasses}">`;
+            if (platform === 'instagram') {
+                return base + `<rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line></svg>`;
+            }
+            if (platform === 'facebook') {
+                return base + `<path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>`;
+            }
+            if (platform === 'x') {
+                return base + `<path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path></svg>`;
+            }
+            if (platform === 'tiktok') {
+                return base + `<path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>`;
+            }
+            return base + `<circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"></path></svg>`;
+        }
+
+        function standardizeAccountName(acc) {
+            if (!acc) return 'paulistao';
+            let n = acc.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+            
+            if (n.includes('futebol paulista') || n.includes('federacao paulista') || n === 'futebolpaulista' || n === 'fpf' || n === 'paulistao' || n === 'paulistao') {
+                return 'paulistao';
+            }
+            if (n.includes('paulistao f') || n === 'paulistaof' || n.includes('feminino')) {
+                return 'paulistao_f';
+            }
+            if (n.includes('copinha') || n.includes('copa sao paulo')) {
+                return 'copinha';
+            }
+            return acc.toLowerCase();
+        }
+
+        function cleanTextContent(text) {
+            if (!text) return '';
+            return text.toLowerCase()
+                .replace(/https?:\/\/\S+/g, '')
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
+                .replace(/[\r\n]+/g, ' ')
+                .replace(/[^\w\s]/gi, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        function generateGroupKey(text, dateObj) {
+            let cleanText = cleanTextContent(text).replace(/\s+/g, '').substring(0, 50);              
+            return cleanText;
+        }
+
+        function extractAccountFromUrl(url) {
+            if (!url) return null;
+            try {
+                let u = url.trim();
+                if(!u.startsWith('http')) u = 'https://' + u;
+                const urlObj = new URL(u);
+                const host = urlObj.hostname.toLowerCase();
+                const path = urlObj.pathname.toLowerCase();
+                
+                if (host.includes('tiktok.com')) {
+                    const m = path.match(/\/@([^\/]+)/);
+                    if (m) return m[1];
+                } else if (host.includes('twitter.com') || host.includes('x.com')) {
+                    const m = path.match(/^\/([^\/]+)\/status/);
+                    if (m) return m[1];
+                } else if (host.includes('instagram.com')) {
+                    const m = path.match(/^\/([^\/]+)\/(?:p|reel|reels)\//);
+                    if (m && !['p','reel','reels'].includes(m[1])) return m[1];
+                } else if (host.includes('facebook.com')) {
+                    const m = path.match(/^\/([^\/]+)\/(?:videos|posts|reels)\//);
+                    if (m && !['watch','groups','profile.php','story.php'].includes(m[1])) return m[1];
+                }
+            } catch(e) {}
+            return null;
+        }
+
+        function safeParseInt(val) {
+            if (!val || val === '-' || val === 'N/A' || String(val).includes('erro')) return 0;
+            let str = String(val).toUpperCase().trim();
+            let mult = 1;
+            if(str.endsWith('K')) mult = 1000;
+            if(str.endsWith('M')) mult = 1000000;
+            let num = parseFloat(str.replace(/[^0-9\.\,]/g, '').replace(',', '.'));
+            return isNaN(num) ? 0 : Math.round(num * mult);
+        }
+
+        function toggleSelectPost(id) {
+            if (selectedPosts.has(id)) {
+                selectedPosts.delete(id);
+            } else {
+                selectedPosts.add(id);
+            }
+            updateSelectionBar();
+        }
+
+        function clearSelection() {
+            selectedPosts.clear();
+            document.querySelectorAll('.post-checkbox').forEach(cb => cb.checked = false);
+            updateSelectionBar();
+        }
+
+        function updateSelectionBar() {
+            const bar = document.getElementById('selection-bar');
+            if (selectedPosts.size === 0) {
+                bar.classList.add('hidden');
+                bar.classList.remove('flex');
+                return;
+            }
+            
+            bar.classList.remove('hidden');
+            bar.classList.add('flex');
+            
+            let sViews = 0, sInt = 0, sLikes = 0, sComm = 0, sShare = 0, sRetweets = 0, sSaves = 0;
+            
+            filteredRankedData.forEach(item => {
+                if (selectedPosts.has(item.id)) {
+                    sViews += item.views;
+                    sInt += item.totalInteracoes;
+                    sLikes += item.likes;
+                    sComm += item.comments;
+                    sShare += item.shares;
+                    sRetweets += item.retweets;
+                    sSaves += item.saves;
+                }
+            });
+            
+            document.getElementById('sel-count').innerText = selectedPosts.size;
+            document.getElementById('sel-views').innerText = sViews.toLocaleString('pt-BR');
+            document.getElementById('sel-int').innerText = sInt.toLocaleString('pt-BR');
+            document.getElementById('sel-likes').innerText = sLikes.toLocaleString('pt-BR');
+            document.getElementById('sel-comments').innerText = sComm.toLocaleString('pt-BR');
+            document.getElementById('sel-shares').innerText = sShare.toLocaleString('pt-BR');
+            document.getElementById('sel-retweets').innerText = sRetweets.toLocaleString('pt-BR');
+        }
+
+        function processMetaCSV(results, platform, fallbackAccount) {
+            const data = results.data;
+            const parsedList = [];
+            
+            data.forEach(row => {
+                if (!row['Horário de publicação']) return;
+                if (row['Data'] !== 'Total' && row['Data'] !== '-' && row['Data'] !== 'Total ') return;
+                if (String(row['Comentário de dados']).includes('erro')) return; 
+
+                let rawAcc = row['Nome de usuário da conta'] || row['Nome da Página'] || fallbackAccount;
+                let url = row['Link permanente'] || '';
+                let rawDesc = row['Descrição'] || row['Título'] || '';
+                
+                let urlAcc = extractAccountFromUrl(url);
+                let account = standardizeAccountName(urlAcc ? urlAcc : rawAcc);
+
+                let dateStr = row['Horário de publicação'].split(' ')[0];
+                let dateObj = new Date(dateStr);
+                
+                let rawType = String(row['Tipo de post'] || '').toLowerCase();
+                let type = 'Imagem';
+                if (rawType.includes('vídeo') || rawType.includes('reel')) type = 'Vídeo';
+                else if (rawType.includes('carrossel')) type = 'Carrossel';
+
+                let views = safeParseInt(row['Visualizações']);
+                let likes = safeParseInt(row['Curtidas'] || row['Reações']);
+                let comments = safeParseInt(row['Comentários']);
+                let shares = safeParseInt(row['Compartilhamentos']);
+                let saves = safeParseInt(row['Salvamentos']);
+                let retweets = 0; 
+
+                let totalInteracoes = likes + comments + shares + saves + retweets;
+
+                if (!rawDesc || rawDesc.trim() === '') return;
+                
+                let desc = rawDesc;
+
+                const tags = desc.match(/#[\wÀ-ÿ]+/g);
+                if(tags) tags.forEach(t => hashtagsSet.add(t));
+                accountsSet.add(account);
+
+                parsedList.push({
+                    platform, account, desc, url, type,
+                    views, likes, comments, shares, retweets, saves, totalInteracoes,
+                    date: dateObj
+                });
+            });
+            return parsedList;
+        }
+
+        function processTikTokTwitterCSV(results, platform, fallbackAccount) {
+            const data = results.data;
+            const parsedList = [];
+            
+            data.forEach(row => {
+                let url = row['Link'] || row['Video Link'] || row['Tweet permalink'] || row['Postar link'] || row['Link para o vídeo'] || row['Link do Tweet'] || row['URL'] || '';
+                let rawDesc = row['Video Title'] || row['Tweet text'] || row['Texto'] || row['Texto do post'] || row['Título do vídeo'] || row['Texto do Tweet'] || '';
+                let dateStr = row['Create Time'] || row['time'] || row['Data'] || row['Hora da publicação'] || row['Hora'] || '';
+                
+                if(!url || !rawDesc) return; 
+
+                let desc = rawDesc.replace(/https?:\/\/t\.co\/\S+/g, '').trim();
+
+                let rawAcc = extractAccountFromUrl(url) || fallbackAccount;
+                let account = standardizeAccountName(rawAcc);
+                
+                let dateObj;
+                let parsedDate = Date.parse(dateStr);
+                if (!isNaN(parsedDate)) {
+                    dateObj = new Date(parsedDate);
+                } else {
+                    let safeDateStr = dateStr.replace(/-/g, '/');
+                    dateObj = new Date(safeDateStr);
+                    if (isNaN(dateObj.getTime())) dateObj = new Date(0);
+                }
+
+                let type = platform === 'tiktok' ? 'Vídeo' : 'Imagem';
+
+                let views = safeParseInt(row['Views'] || row['impressions'] || row['Visualizações de vídeo'] || row['Visualizações do vídeo'] || row['Impressões']);
+                let likes = safeParseInt(row['Likes'] || row['curtidas'] || row['Curtidas']);
+                let comments = safeParseInt(row['Comments'] || row['replies'] || row['respostas'] || row['Comentários'] || row['Respostas']);
+                
+                let shares = safeParseInt(row['Shares'] || row['compartilhamentos'] || row['Compartilhamentos']);
+                let retweets = safeParseInt(row['retweets'] || row['Retweets'] || row['Reposts']);
+                
+                let saves = safeParseInt(row['Saves'] || row['Itens salvos'] || row['Adicionar aos Favoritos'] || row['Favoritos'] || 0);
+
+                let totalInteracoes = likes + comments + shares + retweets + saves;
+                
+                accountsSet.add(account);
+
+                parsedList.push({
+                    platform, account, desc, url, type,
+                    views, likes, comments, shares, retweets, saves, totalInteracoes,
+                    date: dateObj
+                });
+            });
+            return parsedList;
+        }
+
+        function updateFiltersUI() {
+            document.getElementById('hashtag-suggestions').innerHTML = Array.from(hashtagsSet).map(tag => `<option value="${tag}">`).join('');
+            
+            const formatFilter = document.getElementById('formatFilter');
+            formatFilter.innerHTML = '<option value="Todos">Tipos de Post</option>' + Array.from(typesSet).map(t => `<option value="${t}">${t}</option>`).join('');
+
+            const accountFilter = document.getElementById('accountFilter');
+            // Menu fixo apenas com as opções principais
+            accountFilter.innerHTML = `
+                <option value="Todas">Todas as Contas</option>
+                <option value="paulistao">🏆 Paulistão</option>
+                <option value="paulistao_f">🏆 Paulistão Feminino</option>
+                <option value="copinha">🏆 Copinha</option>
+            `;
+        }
+
+        function applyFiltersAndGroup() {
+            const groups = {};
+            const allPosts = [];
+            activePlatforms.forEach(plat => {
+                allPosts.push(...uploadedData[plat]);
+            });
+
+            allPosts.forEach(item => {
+                const key = generateGroupKey(item.desc, item.date);
+                
+                if (!groups[key]) {
+                    groups[key] = {
+                        id: key,
+                        desc: item.desc,
+                        platforms: new Set(),
+                        accounts: new Set(),
+                        types: new Set(),
+                        links: {},
+                        views: 0, likes: 0, comments: 0, shares: 0, retweets: 0, saves: 0, totalInteracoes: 0,
+                        date: item.date ? item.date.getTime() : 0
+                    };
+                }
+
+                groups[key].platforms.add(item.platform);
+                groups[key].accounts.add(item.account);
+                groups[key].types.add(item.type);
+                groups[key].links[item.platform] = item.url;
+                groups[key].views += item.views;
+                groups[key].likes += item.likes;
+                groups[key].comments += item.comments;
+                groups[key].shares += item.shares;
+                groups[key].retweets += item.retweets;
+                groups[key].saves += item.saves;
+                groups[key].totalInteracoes += item.totalInteracoes;
+                
+                if (item.date && item.date.getTime() > groups[key].date) {
+                    groups[key].date = item.date.getTime();
+                }
+            });
+
+            const searchInputRaw = document.getElementById('searchInput').value;
+            const search = cleanTextContent(searchInputRaw).replace(/\s+/g, '');
+            
+            const sortBy = document.getElementById('sortOrder').value;
+            const formatSel = document.getElementById('formatFilter').value;
+            const accountSel = document.getElementById('accountFilter').value;
+            
+            const startStr = document.getElementById('date-start').value;
+            const endStr = document.getElementById('date-end').value;
+            
+            const startDate = startStr ? new Date(startStr + 'T00:00:00').getTime() : 0;
+            const endDate = endStr ? new Date(endStr + 'T23:59:59').getTime() : new Date().getTime();
+
+            const finalData = [];
+
+            Object.values(groups).forEach(g => {
+                let finalType = 'Imagem';
+                if (g.types.has('Vídeo')) {
+                    finalType = 'Vídeo';
+                } else if (g.types.has('Carrossel')) {
+                    finalType = 'Carrossel';
+                }
+                
+                g.types = new Set([finalType]);
+
+                const cleanGroupDesc = cleanTextContent(g.desc).replace(/\s+/g, '');
+
+                if (g.date < startDate || g.date > endDate) return;
+                
+                // Filtro oculto obrigatório: Petrobras
+                if (!cleanGroupDesc.includes('petrobras')) return;
+
+                // Filtro extra de busca do usuário
+                if (search && !cleanGroupDesc.includes(search)) return;
+                
+                if (formatSel !== 'Todos' && finalType !== formatSel) return;
+                if (accountSel !== 'Todas' && !g.accounts.has(accountSel)) return;
+
+                finalData.push(g);
+            });
+
+            filteredRankedData = finalData.sort((a, b) => b[sortBy] - a[sortBy]);
+            
+            const totalPages = Math.ceil(filteredRankedData.length / itemsPerPage) || 1;
+            if (currentPage > totalPages) currentPage = 1;
+
+            updateKPIs();
+            renderPaginatedRanking();
+            updateSelectionBar();
+        }
+
+        function updateKPIs() {
+            let tViews = 0, tInt = 0, tLikes = 0, tComm = 0, tShare = 0, tRetweets = 0, tSave = 0;
+            filteredRankedData.forEach(g => {
+                tViews += g.views; tInt += g.totalInteracoes;
+                tLikes += g.likes; tComm += g.comments; tShare += g.shares; 
+                tRetweets += g.retweets; tSave += g.saves;
+            });
+
+            document.getElementById('kpi-views').innerText = tViews.toLocaleString('pt-BR');
+            document.getElementById('kpi-interactions').innerText = tInt.toLocaleString('pt-BR');
+            document.getElementById('kpi-likes').innerText = tLikes.toLocaleString('pt-BR');
+            document.getElementById('kpi-comments').innerText = tComm.toLocaleString('pt-BR');
+            document.getElementById('kpi-shares').innerText = tShare.toLocaleString('pt-BR');
+            document.getElementById('kpi-retweets').innerText = tRetweets.toLocaleString('pt-BR');
+            document.getElementById('kpi-saves').innerText = tSave.toLocaleString('pt-BR');
+            document.getElementById('post-count').innerText = `${filteredRankedData.length} posts`;
+        }
+
+        function getInstagramEmbedUrl(url) {
+            if (!url) return null;
+            try {
+                if (url.includes('instagram.com/p/') || url.includes('instagram.com/reel/')) {
+                    return `${url.replace(/\/$/, '')}/embed`;
+                }
+            } catch(e) {}
+            return null;
+        }
+
+        function generatePostCardHTML(item, rankIndex, showEmbed) {
+            const plats = Array.from(item.platforms);
+            let mediaBlock = '';
+
+            if (showEmbed) {
+                let embedHtml = null;
+                let primaryPlat = null;
+                
+                const prefOrder = ['instagram', 'facebook', 'tiktok', 'x'];
+                for (let pref of prefOrder) {
+                    if (plats.includes(pref) && item.links[pref]) {
+                        primaryPlat = pref;
+                        break;
+                    }
+                }
+                
+                if (!primaryPlat) primaryPlat = plats[0];
+
+                const url = item.links[primaryPlat];
+                if (primaryPlat === 'instagram') {
+                    const embedUrl = getInstagramEmbedUrl(url);
+                    if(embedUrl) embedHtml = `<iframe src="${embedUrl}" width="320" height="400" frameborder="0" scrolling="no" class="-mt-2 rounded-xl"></iframe>`;
+                } else if (primaryPlat === 'tiktok' && url) {
+                    const ttMatch = url.match(/video\/(\d+)/);
+                    if (ttMatch) embedHtml = `<iframe src="https://www.tiktok.com/embed/v2/${ttMatch[1]}" width="320" height="400" frameborder="0" scrolling="no" class="rounded-xl"></iframe>`;
+                } else if (primaryPlat === 'facebook' && url) {
+                    embedHtml = `<iframe src="https://www.facebook.com/plugins/post.php?href=${encodeURIComponent(url)}&show_text=false&width=320" width="320" height="400" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowTransparency="true" allow="encrypted-media" class="rounded-xl bg-white"></iframe>`;
+                } else if (primaryPlat === 'x' && url) {
+                    embedHtml = `<div class="w-full sm:w-[320px] h-[360px] bg-white overflow-y-auto flex justify-center rounded-xl shadow-sm border border-slate-200 hide-scrollbar">
+                                    <blockquote class="twitter-tweet" data-dnt="true" data-theme="light" data-width="320">
+                                        <a href="${url}"></a>
+                                    </blockquote>
+                                 </div>`;
+                }
+
+                if (embedHtml) {
+                    mediaBlock = primaryPlat === 'x' 
+                        ? embedHtml 
+                        : `<div class="w-full sm:w-[320px] h-[360px] bg-slate-100 flex flex-col items-center justify-center flex-shrink-0 rounded-xl overflow-hidden shadow-sm border border-slate-200">${embedHtml}</div>`;
+                } else {
+                    let thumbBg = plats.length > 1 ? 'plat-bg-multi' : `plat-bg-${plats[0]}`;
+                    mediaBlock = `
+                        <div class="w-full sm:w-[320px] h-48 sm:h-[360px] ${thumbBg} flex flex-col items-center justify-center flex-shrink-0 rounded-xl shadow-inner text-white p-6 text-center relative overflow-hidden">
+                            <div class="flex gap-4 mb-2 z-10 text-white">
+                                ${plats.map(p => getPlatformSVG(p, "w-10 h-10 drop-shadow-md text-white")).join('')}
+                            </div>
+                            <span class="text-xs font-bold uppercase tracking-wider bg-black/20 px-3 py-1 rounded-full z-10 mt-2 text-white">
+                                ${plats.length > 1 ? 'Multi-Plataforma' : plats[0]}
+                            </span>
+                            <p class="text-xs font-medium mt-4 z-10 opacity-80 max-w-[80%] break-words line-clamp-2 text-white">@${Array.from(item.accounts).join(', @')}</p>
+                        </div>
+                    `;
+                }
+            } else {
+                let thumbBg = plats.length > 1 ? 'plat-bg-multi' : `plat-bg-${plats[0]}`;
+                mediaBlock = `
+                    <div class="w-14 h-14 rounded-xl ${thumbBg} flex items-center justify-center flex-shrink-0 shadow-sm text-white">
+                        ${plats.length > 1 ? `<i data-lucide="layers" class="w-6 h-6"></i>` : getPlatformSVG(plats[0], "w-6 h-6")}
+                    </div>
+                `;
+            }
+
+            const containerStyle = showEmbed ? "flex-col sm:flex-row items-start" : "flex-col xl:flex-row items-start xl:items-center";
+            const isChecked = selectedPosts.has(item.id) ? 'checked' : '';
+
+            return `
+            <div class="p-4 sm:p-6 flex ${containerStyle} gap-6 hover:bg-slate-50 transition border-b border-slate-50 last:border-0 relative">
+                
+                <div class="w-10 flex flex-col items-center gap-3 flex-shrink-0 self-start xl:self-center">
+                    <span class="font-bold text-slate-400">#${rankIndex}</span>
+                    <input type="checkbox" onchange="toggleSelectPost('${item.id}')" ${isChecked} class="post-checkbox w-5 h-5 text-indigo-600 bg-slate-100 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer shadow-sm">
+                </div>
+
+                ${mediaBlock}
+                
+                <div class="flex-1 w-full text-left space-y-3 pt-2">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <div class="flex gap-1.5 mr-1 text-white">
+                            ${plats.map(p => `
+                                <a href="${item.links[p] || '#'}" target="_blank" title="Ver no ${p}" class="inline-flex items-center justify-center w-7 h-7 rounded-md plat-bg-${p} shadow-sm hover:opacity-80 transition-opacity text-white">
+                                    ${getPlatformSVG(p, "w-4 h-4 text-white")}
+                                </a>
+                            `).join('')}
+                        </div>
+
+                        <span class="inline-block text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md">@${Array.from(item.accounts).join(', @')}</span>
+                        <span class="inline-block text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-md">${Array.from(item.types).join(' / ')}</span>
+                    </div>
+                    
+                    <p class="text-sm font-medium line-clamp-3 text-slate-800 mt-2 pr-4">${item.desc}</p>
+                    
+                    <div class="flex flex-wrap gap-4 pt-4 border-t border-slate-100 mt-4">
+                        <div class="bg-rose-50 px-4 py-2 rounded-lg text-center border border-rose-100 min-w-[100px]">
+                            <p class="text-[10px] text-rose-600 font-bold uppercase tracking-wider">Interações</p>
+                            <p class="text-xl font-bold text-rose-700">${item.totalInteracoes.toLocaleString('pt-BR')}</p>
+                        </div>
+                        <div class="flex gap-4 sm:gap-6 items-center px-2">
+                            <div class="text-center" title="Visualizações">
+                                <div class="flex justify-center text-slate-400 mb-1"><i data-lucide="eye" class="w-4 h-4"></i></div>
+                                <p class="text-sm font-bold text-slate-700">${item.views.toLocaleString('pt-BR')}</p>
+                            </div>
+                            <div class="text-center hidden sm:block" title="Curtidas">
+                                <div class="flex justify-center text-rose-400 mb-1"><i data-lucide="heart" class="w-4 h-4"></i></div>
+                                <p class="text-sm font-bold text-slate-700">${item.likes.toLocaleString('pt-BR')}</p>
+                            </div>
+                            <div class="text-center hidden sm:block" title="Comentários">
+                                <div class="flex justify-center text-emerald-400 mb-1"><i data-lucide="message-circle" class="w-4 h-4"></i></div>
+                                <p class="text-sm font-bold text-slate-700">${item.comments.toLocaleString('pt-BR')}</p>
+                            </div>
+                            <div class="text-center hidden sm:block" title="Compartilhamentos">
+                                <div class="flex justify-center text-blue-400 mb-1"><i data-lucide="share-2" class="w-4 h-4"></i></div>
+                                <p class="text-sm font-bold text-slate-700">${item.shares.toLocaleString('pt-BR')}</p>
+                            </div>
+                            <div class="text-center hidden sm:block" title="Retweets">
+                                <div class="flex justify-center text-sky-400 mb-1"><i data-lucide="repeat" class="w-4 h-4"></i></div>
+                                <p class="text-sm font-bold text-slate-700">${item.retweets.toLocaleString('pt-BR')}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            `;
+        }
+        
+        function callTwitterRenderer() {
+            setTimeout(() => {
+                if (window.twttr && window.twttr.widgets) {
+                    window.twttr.widgets.load();
+                }
+            }, 100);
+        }
+
+        function renderPaginatedRanking() {
+            const container = document.getElementById('rankingContainer');
+            
+            if (filteredRankedData.length === 0) {
+                container.innerHTML = `<div class="p-12 text-center text-slate-500">Nenhum resultado encontrado no período ou filtros selecionados.</div>`;
+                document.getElementById('current-page').innerText = 1;
+                document.getElementById('total-pages').innerText = 1;
+                document.getElementById('btn-prev').disabled = true;
+                document.getElementById('btn-next').disabled = true;
+                return;
+            }
+
+            const totalPages = Math.ceil(filteredRankedData.length / itemsPerPage) || 1;
+            
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const currentItems = filteredRankedData.slice(startIndex, endIndex);
+
+            container.innerHTML = currentItems.map((item, localIndex) => {
+                const globalRankIndex = startIndex + localIndex + 1;
+                return generatePostCardHTML(item, globalRankIndex, true);
+            }).join('');
+
+            document.getElementById('current-page').innerText = currentPage;
+            document.getElementById('total-pages').innerText = totalPages;
+            
+            document.getElementById('btn-prev').disabled = currentPage === 1;
+            document.getElementById('btn-next').disabled = currentPage === totalPages;
+
+            lucide.createIcons();
+            callTwitterRenderer();
+        }
+
+        function changePage(direction) {
+            currentPage += direction;
+            renderPaginatedRanking();
+            document.getElementById('rankingContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        document.getElementById('searchInput').addEventListener('input', applyFiltersAndGroup);
+        document.getElementById('sortOrder').addEventListener('change', applyFiltersAndGroup);
+        document.getElementById('formatFilter').addEventListener('change', applyFiltersAndGroup);
+        document.getElementById('accountFilter').addEventListener('change', applyFiltersAndGroup);
+        document.getElementById('date-start').addEventListener('change', applyFiltersAndGroup);
+        document.getElementById('date-end').addEventListener('change', applyFiltersAndGroup);
+
+    </script>
+</body>
+</html>
