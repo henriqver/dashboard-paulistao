@@ -43,8 +43,15 @@
             </div>
         </div>
 
-        <!-- KPIs em Grid Padronizado -->
-        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+        <!-- KPIs em Grid Padronizado (2 Linhas x 4 Colunas) -->
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
+                <div class="flex items-center gap-1.5 mb-2 text-indigo-400">
+                    <i data-lucide="layers" class="w-4 h-4"></i>
+                    <span class="text-[10px] font-bold uppercase tracking-wider">Posts Totais</span>
+                </div>
+                <p id="kpi-posts" class="text-xl font-black text-slate-800">0</p>
+            </div>
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
                 <div class="flex items-center gap-1.5 mb-2 text-slate-400">
                     <i data-lucide="eye" class="w-4 h-4"></i>
@@ -69,14 +76,14 @@
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
                 <div class="flex items-center gap-1.5 mb-2 text-emerald-400">
                     <i data-lucide="message-circle" class="w-4 h-4"></i>
-                    <span class="text-[10px] font-bold uppercase tracking-wider">Coment.</span>
+                    <span class="text-[10px] font-bold uppercase tracking-wider">Comentários</span>
                 </div>
                 <p id="kpi-comments" class="text-xl font-black text-slate-800">0</p>
             </div>
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
                 <div class="flex items-center gap-1.5 mb-2 text-blue-400">
                     <i data-lucide="share-2" class="w-4 h-4"></i>
-                    <span class="text-[10px] font-bold uppercase tracking-wider">Compart.</span>
+                    <span class="text-[10px] font-bold uppercase tracking-wider">Compartilhamentos</span>
                 </div>
                 <p id="kpi-shares" class="text-xl font-black text-slate-800">0</p>
             </div>
@@ -131,9 +138,9 @@
                 <div class="relative w-full md:w-56 flex-shrink-0">
                     <i data-lucide="bar-chart-2" class="absolute left-3 top-3.5 text-slate-400 w-4 h-4"></i>
                     <select id="sortOrder" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 font-medium text-slate-700 appearance-none">
+                        <option value="views" selected>Ordem: Visualizações</option>
                         <option value="totalInteracoes">Ordem: Interações</option>
                         <option value="date">Ordem: Mais Recentes</option>
-                        <option value="views">Ordem: Visualizações</option>
                         <option value="likes">Ordem: Curtidas</option>
                         <option value="comments">Ordem: Comentários</option>
                         <option value="shares">Ordem: Compartilh.</option>
@@ -152,7 +159,7 @@
                 <div class="relative w-full md:w-48 flex-shrink-0">
                     <i data-lucide="user" class="absolute left-3 top-3.5 text-slate-400 w-4 h-4"></i>
                     <select id="accountFilter" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 font-medium text-slate-700 appearance-none">
-                        <option value="Todas">Todas as Contas</option>
+                        <!-- Preenchido via JS -->
                     </select>
                 </div>
             </div>
@@ -160,12 +167,13 @@
 
         <!-- Ranking Consolidado -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-            <div class="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-                <h2 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+            <div class="p-6 bg-slate-50 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 overflow-x-auto">
+                <h2 class="font-bold text-lg text-slate-800 flex items-center gap-2 whitespace-nowrap">
                     <i data-lucide="trophy" class="text-amber-500"></i> Galeria de Posts
                 </h2>
-                <div class="flex items-center gap-4">
-                    <span class="text-sm font-medium text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-100" id="post-count">0 posts</span>
+                <!-- Caixas de Contagem -->
+                <div id="post-count" class="flex gap-2 items-center flex-nowrap hide-scrollbar overflow-x-auto w-full lg:w-auto">
+                    <!-- Preenchido via JS -->
                 </div>
             </div>
             
@@ -260,7 +268,7 @@
         };
         let filteredRankedData = []; 
         let activePlatforms = ['instagram', 'facebook', 'tiktok', 'x']; 
-        let selectedPosts = new Set(); // Armazena os IDs dos posts selecionados
+        let selectedPosts = new Set();
         
         const hashtagsSet = new Set();
         const typesSet = new Set(['Imagem', 'Vídeo', 'Carrossel']);
@@ -268,6 +276,17 @@
 
         let currentPage = 1;
         const itemsPerPage = 10;
+
+        // ESTILOS DINÂMICOS PARA O HIGHLIGHT DAS MÉTRICAS
+        const metricStyles = {
+            totalInteracoes: { color: 'rose', bg: 'bg-rose-50', border: 'border-rose-100', textLg: 'text-rose-700', textSm: 'text-rose-600', icon: 'activity', defaultColor: 'text-rose-400' },
+            views: { color: 'slate', bg: 'bg-slate-100', border: 'border-slate-200', textLg: 'text-slate-700', textSm: 'text-slate-500', icon: 'eye', defaultColor: 'text-slate-400' },
+            likes: { color: 'rose', bg: 'bg-rose-50', border: 'border-rose-100', textLg: 'text-rose-700', textSm: 'text-rose-600', icon: 'heart', defaultColor: 'text-rose-400' },
+            comments: { color: 'emerald', bg: 'bg-emerald-50', border: 'border-emerald-100', textLg: 'text-emerald-700', textSm: 'text-emerald-600', icon: 'message-circle', defaultColor: 'text-emerald-400' },
+            shares: { color: 'blue', bg: 'bg-blue-50', border: 'border-blue-100', textLg: 'text-blue-700', textSm: 'text-blue-600', icon: 'share-2', defaultColor: 'text-blue-400' },
+            retweets: { color: 'sky', bg: 'bg-sky-50', border: 'border-sky-100', textLg: 'text-sky-700', textSm: 'text-sky-600', icon: 'repeat', defaultColor: 'text-sky-400' },
+            saves: { color: 'amber', bg: 'bg-amber-50', border: 'border-amber-100', textLg: 'text-amber-700', textSm: 'text-amber-600', icon: 'bookmark', defaultColor: 'text-amber-400' },
+        };
 
         // ==========================================
         // SINCRONIZAÇÃO AUTOMÁTICA COM GITHUB
@@ -324,6 +343,7 @@
                         const nomeMenor = nomeArquivo.toLowerCase();
                         if (nomeMenor.includes('copinha')) contaPadrao = 'Copinha';
                         else if (nomeMenor.includes('feminino') || nomeMenor.includes(' f ')) contaPadrao = 'Paulistão F';
+                        else if (nomeMenor.includes('fpf')) contaPadrao = 'FPF';
 
                         let novosPosts = [];
                         if (plataforma === 'facebook' || plataforma === 'instagram') {
@@ -413,32 +433,31 @@
             if (!acc) return 'paulistao';
             let n = acc.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
             
-            if (n.includes('futebol paulista') || n.includes('federacao paulista') || n === 'futebolpaulista' || n === 'fpf' || n === 'paulistao' || n === 'paulistao') {
-                return 'paulistao';
-            }
             if (n.includes('paulistao f') || n === 'paulistaof' || n.includes('feminino')) {
                 return 'paulistao_f';
             }
             if (n.includes('copinha') || n.includes('copa sao paulo')) {
                 return 'copinha';
             }
+            if (n === 'fpf' || n === 'fpf_oficial' || n.includes('federacao paulista') || n.includes('federação paulista')) {
+                return 'fpf_oficial';
+            }
+            if (n.includes('futebol paulista') || n === 'futebolpaulista' || n === 'paulistao') {
+                return 'paulistao';
+            }
+            
             return acc.toLowerCase();
         }
 
         function cleanTextContent(text) {
             if (!text) return '';
             return text.toLowerCase()
-                .replace(/https?:\/\/\S+/g, '')       // Remove qualquer URL (incluindo t.co)
+                .replace(/https?:\/\/\S+/g, '')       
                 .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
-                .replace(/[\r\n]+/g, ' ')             // Converte quebras de linha em espaços
-                .replace(/[^\w\s]/gi, '')             // Remove símbolos e pontuações
-                .replace(/\s+/g, ' ')                 // Padroniza múltiplos espaços para um único
+                .replace(/[\r\n]+/g, ' ')             
+                .replace(/[^\w\s]/gi, '')             
+                .replace(/\s+/g, ' ')                 
                 .trim();
-        }
-
-        function generateGroupKey(text, dateObj) {
-            let cleanText = cleanTextContent(text).replace(/\s+/g, '').substring(0, 50);              
-            return cleanText;
         }
 
         function extractAccountFromUrl(url) {
@@ -547,10 +566,20 @@
                 let rawDesc = row['Descrição'] || row['Título'] || '';
                 
                 let urlAcc = extractAccountFromUrl(url);
-                let account = standardizeAccountName(urlAcc ? urlAcc : rawAcc);
+                let primaryAccount = urlAcc ? standardizeAccountName(urlAcc) : null;
+                let account = primaryAccount || standardizeAccountName(rawAcc);
+                let originFolder = standardizeAccountName(fallbackAccount);
 
-                let dateStr = row['Horário de publicação'].split(' ')[0];
-                let dateObj = new Date(dateStr);
+                // Melhoria no parse de datas do Meta
+                let dateStrRaw = row['Horário de publicação'].split(' ')[0];
+                let dateObj = new Date(dateStrRaw);
+                if (isNaN(dateObj.getTime())) {
+                    let brMatch = dateStrRaw.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+                    if (brMatch) {
+                        dateObj = new Date(`${brMatch[3]}-${brMatch[2]}-${brMatch[1]}T12:00:00`);
+                    }
+                }
+                if (isNaN(dateObj.getTime())) dateObj = new Date(0);
                 
                 let rawType = String(row['Tipo de post'] || '').toLowerCase();
                 let type = 'Imagem';
@@ -562,20 +591,19 @@
                 let comments = safeParseInt(row['Comentários']);
                 let shares = safeParseInt(row['Compartilhamentos']);
                 let saves = safeParseInt(row['Salvamentos']);
-                let retweets = 0; // Meta não tem retweets
+                let retweets = 0; 
 
                 let totalInteracoes = likes + comments + shares + saves + retweets;
 
-                if (!rawDesc || rawDesc.trim() === '') return;
-                
-                let desc = rawDesc;
+                // Não ignoramos mais posts vazios, apenas definimos um texto padrão
+                let desc = rawDesc ? rawDesc : 'Post sem texto';
 
                 const tags = desc.match(/#[\wÀ-ÿ]+/g);
                 if(tags) tags.forEach(t => hashtagsSet.add(t));
                 accountsSet.add(account);
 
                 parsedList.push({
-                    platform, account, desc, url, type,
+                    platform, account, primaryAccount, originFolder, desc, url, type,
                     views, likes, comments, shares, retweets, saves, totalInteracoes,
                     date: dateObj
                 });
@@ -592,22 +620,33 @@
                 let rawDesc = row['Video Title'] || row['Tweet text'] || row['Texto'] || row['Texto do post'] || row['Título do vídeo'] || row['Texto do Tweet'] || '';
                 let dateStr = row['Create Time'] || row['time'] || row['Data'] || row['Hora da publicação'] || row['Hora'] || '';
                 
-                if(!url || !rawDesc) return; 
+                // Removida a barreira de texto vazio. Se não tiver URL, aí sim ignoramos.
+                if(!url) return; 
 
-                let desc = rawDesc.replace(/https?:\/\/t\.co\/\S+/g, '').trim();
+                let desc = rawDesc ? rawDesc.replace(/https?:\/\/t\.co\/\S+/g, '').trim() : 'Post sem texto';
+                if (desc === '') desc = 'Post sem texto';
 
-                let rawAcc = extractAccountFromUrl(url) || fallbackAccount;
-                let account = standardizeAccountName(rawAcc);
+                let urlAcc = extractAccountFromUrl(url);
+                let primaryAccount = urlAcc ? standardizeAccountName(urlAcc) : null;
+                let account = primaryAccount || standardizeAccountName(fallbackAccount);
+                let originFolder = standardizeAccountName(fallbackAccount);
                 
-                let dateObj;
-                let parsedDate = Date.parse(dateStr);
-                if (!isNaN(parsedDate)) {
-                    dateObj = new Date(parsedDate);
-                } else {
-                    let safeDateStr = dateStr.replace(/-/g, '/');
-                    dateObj = new Date(safeDateStr);
-                    if (isNaN(dateObj.getTime())) dateObj = new Date(0);
+                // Parser de Data aprimorado para X e TikTok
+                let dateObj = new Date(0);
+                if (dateStr) {
+                    let parsedDate = Date.parse(dateStr);
+                    if (!isNaN(parsedDate)) {
+                        dateObj = new Date(parsedDate);
+                    } else {
+                        let brMatch = dateStr.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+                        if (brMatch) {
+                            dateObj = new Date(`${brMatch[3]}-${brMatch[2]}-${brMatch[1]}T12:00:00`);
+                        } else {
+                            dateObj = new Date(dateStr.replace(/-/g, '/'));
+                        }
+                    }
                 }
+                if (isNaN(dateObj.getTime())) dateObj = new Date(0);
 
                 let type = platform === 'tiktok' ? 'Vídeo' : 'Imagem';
 
@@ -615,7 +654,6 @@
                 let likes = safeParseInt(row['Likes'] || row['curtidas'] || row['Curtidas']);
                 let comments = safeParseInt(row['Comments'] || row['replies'] || row['respostas'] || row['Comentários'] || row['Respostas']);
                 
-                // Separação de Compartilhamentos e Retweets
                 let shares = safeParseInt(row['Shares'] || row['compartilhamentos'] || row['Compartilhamentos']);
                 let retweets = safeParseInt(row['retweets'] || row['Retweets'] || row['Reposts']);
                 
@@ -626,7 +664,7 @@
                 accountsSet.add(account);
 
                 parsedList.push({
-                    platform, account, desc, url, type,
+                    platform, account, primaryAccount, originFolder, desc, url, type,
                     views, likes, comments, shares, retweets, saves, totalInteracoes,
                     date: dateObj
                 });
@@ -641,23 +679,38 @@
             formatFilter.innerHTML = '<option value="Todos">Tipos de Post</option>' + Array.from(typesSet).map(t => `<option value="${t}">${t}</option>`).join('');
 
             const accountFilter = document.getElementById('accountFilter');
-            let accHtml = '<option value="Todas">Todas as Contas</option>';
+            let accHtml = `
+                <option value="Todas">Todas as Contas</option>
+                <option disabled>──────────</option>
+                <option value="paulistao">Paulistão</option>
+                <option value="paulistao_f">Paulistão F</option>
+                <option value="copinha">Copinha</option>
+                <option value="fpf">FPF</option>
+                <option disabled>──────────</option>
+                <option value="paulistao_plus">Paulistão+</option>
+                <option value="paulistao_f_plus">Paulistão F+</option>
+                <option value="copinha_plus">Copinha+</option>
+                <option value="fpf_plus">FPF+</option>
+                <option disabled>──────────</option>
+            `;
             
-            const priority = ['paulistao', 'paulistao_f', 'copinha'];
-            priority.forEach(a => {
-                if(accountsSet.has(a)) {
-                    let label = a === 'paulistao' ? '🏆 Paulistão' : (a === 'paulistao_f' ? '🏆 Paulistão Feminino' : '🏆 Copinha');
-                    accHtml += `<option value="${a}">${label}</option>`;
-                }
-            });
+            const mainAccounts = ['paulistao', 'paulistao_f', 'copinha', 'fpf_oficial'];
             
-            if(accountsSet.size > priority.length) accHtml += '<option disabled>──────────</option>';
-            
-            Array.from(accountsSet).filter(a => !priority.includes(a) && a.length < 30).sort().forEach(a => {
+            Array.from(accountsSet).filter(a => !mainAccounts.includes(a) && a.length < 30).sort().forEach(a => {
                 accHtml += `<option value="${a}">@${a}</option>`;
             });
             
             accountFilter.innerHTML = accHtml;
+        }
+
+        // Nova função geradora de chaves incluindo Data para evitar fusão de tweets genéricos
+        function generateIntelligentGroupKey(text, dateObj) {
+            let cleanText = cleanTextContent(text).replace(/\s+/g, '').substring(0, 50) || 'semtexto';
+            let dateStr = '';
+            if (dateObj && !isNaN(dateObj.getTime())) {
+                dateStr = dateObj.getFullYear() + '-' + dateObj.getMonth() + '-' + dateObj.getDate();
+            }
+            return cleanText + '_' + dateStr;
         }
 
         // ==========================================
@@ -672,14 +725,26 @@
             });
 
             allPosts.forEach(item => {
-                const key = generateGroupKey(item.desc, item.date);
+                let baseKey = generateIntelligentGroupKey(item.desc, item.date);
+                let key = baseKey;
+                
+                // MÁGICA ANTISSUMIÇO DE POSTS: Se já existe um post desse mesmo dia e com esse mesmo texto 
+                // para ESSA plataforma específica, forçamos a criação de uma nova linha!
+                // Assim, posts idênticos da MESMA rede (Ex: 5 "Fim de Jogo" no Twitter no mesmo dia) nunca se anulam.
+                let counter = 1;
+                while (groups[key] && groups[key].platforms.has(item.platform)) {
+                    key = baseKey + '_' + counter;
+                    counter++;
+                }
                 
                 if (!groups[key]) {
                     groups[key] = {
-                        id: key, // Usamos a chave limpa como ID único do post para a seleção
+                        id: key,
                         desc: item.desc,
                         platforms: new Set(),
                         accounts: new Set(),
+                        primaryAccounts: new Set(), 
+                        origins: new Set(), 
                         types: new Set(),
                         links: {},
                         views: 0, likes: 0, comments: 0, shares: 0, retweets: 0, saves: 0, totalInteracoes: 0,
@@ -689,6 +754,8 @@
 
                 groups[key].platforms.add(item.platform);
                 groups[key].accounts.add(item.account);
+                groups[key].origins.add(item.originFolder);
+                if (item.primaryAccount) groups[key].primaryAccounts.add(item.primaryAccount);
                 groups[key].types.add(item.type);
                 groups[key].links[item.platform] = item.url;
                 groups[key].views += item.views;
@@ -734,14 +801,39 @@
                 if (g.date < startDate || g.date > endDate) return;
                 if (search && !cleanGroupDesc.includes(search)) return;
                 if (formatSel !== 'Todos' && finalType !== formatSel) return;
-                if (accountSel !== 'Todas' && !g.accounts.has(accountSel)) return;
+                
+                if (accountSel !== 'Todas') {
+                    if (accountSel.endsWith('_plus')) {
+                        const baseAcc = accountSel.replace('_plus', '');
+                        let mentioned = false;
+                        
+                        if (baseAcc === 'paulistao' && (cleanGroupDesc.includes('paulistao') || cleanGroupDesc.includes('@paulistao'))) mentioned = true;
+                        if (baseAcc === 'paulistao_f' && (cleanGroupDesc.includes('paulistaof') || cleanGroupDesc.includes('feminino') || cleanGroupDesc.includes('paulistao f'))) mentioned = true;
+                        if (baseAcc === 'copinha' && (cleanGroupDesc.includes('copinha') || cleanGroupDesc.includes('copa sao paulo'))) mentioned = true;
+                        if (baseAcc === 'fpf' && (cleanGroupDesc.includes('fpf') || cleanGroupDesc.includes('federacao paulista'))) mentioned = true;
+                        
+                        let accountToCheck = baseAcc === 'fpf' ? 'fpf_oficial' : baseAcc;
+
+                        if (!g.primaryAccounts.has(accountToCheck) && !g.origins.has(accountToCheck) && !mentioned) return;
+                    } else {
+                        let accountToCheck = accountSel === 'fpf' ? 'fpf_oficial' : accountSel;
+                        let isOriginal = false;
+                        
+                        if (g.primaryAccounts.size > 0) {
+                            if (g.primaryAccounts.has(accountToCheck)) isOriginal = true;
+                        } else {
+                            if (g.accounts.has(accountToCheck)) isOriginal = true;
+                        }
+                        
+                        if (!isOriginal) return;
+                    }
+                }
 
                 finalData.push(g);
             });
 
             filteredRankedData = finalData.sort((a, b) => b[sortBy] - a[sortBy]);
             
-            // Corrige a página caso a filtragem reduza os resultados
             const totalPages = Math.ceil(filteredRankedData.length / itemsPerPage) || 1;
             if (currentPage > totalPages) currentPage = 1;
 
@@ -753,12 +845,23 @@
 
         function updateKPIs() {
             let tViews = 0, tInt = 0, tLikes = 0, tComm = 0, tShare = 0, tRetweets = 0, tSave = 0;
+            let platCounts = { instagram: 0, facebook: 0, tiktok: 0, x: 0 };
+            let totalPostsIndividual = 0;
+
             filteredRankedData.forEach(g => {
                 tViews += g.views; tInt += g.totalInteracoes;
                 tLikes += g.likes; tComm += g.comments; tShare += g.shares; 
                 tRetweets += g.retweets; tSave += g.saves;
+                
+                g.platforms.forEach(p => {
+                    if(platCounts[p] !== undefined) {
+                        platCounts[p]++;
+                        totalPostsIndividual++;
+                    }
+                });
             });
 
+            document.getElementById('kpi-posts').innerText = totalPostsIndividual.toLocaleString('pt-BR');
             document.getElementById('kpi-views').innerText = tViews.toLocaleString('pt-BR');
             document.getElementById('kpi-interactions').innerText = tInt.toLocaleString('pt-BR');
             document.getElementById('kpi-likes').innerText = tLikes.toLocaleString('pt-BR');
@@ -766,7 +869,25 @@
             document.getElementById('kpi-shares').innerText = tShare.toLocaleString('pt-BR');
             document.getElementById('kpi-retweets').innerText = tRetweets.toLocaleString('pt-BR');
             document.getElementById('kpi-saves').innerText = tSave.toLocaleString('pt-BR');
-            document.getElementById('post-count').innerText = `${filteredRankedData.length} posts`;
+            
+            const pcContainer = document.getElementById('post-count');
+            
+            let boxesHtml = `<div class="px-3 py-1.5 bg-indigo-50 border border-indigo-100 rounded-lg text-indigo-700 font-bold text-sm leading-none flex items-center">${totalPostsIndividual} Posts</div>`;
+            
+            const fixedOrder = ['instagram', 'facebook', 'tiktok', 'x'];
+            
+            fixedOrder.forEach(p => {
+                if(activePlatforms.includes(p) && platCounts[p] > 0) {
+                    boxesHtml += `
+                    <div class="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-700 font-bold text-sm leading-none flex items-center gap-1.5 shadow-sm">
+                        ${getPlatformSVG(p, "w-4 h-4 text-slate-500")}
+                        <span>${platCounts[p]}</span>
+                    </div>
+                    `;
+                }
+            });
+            
+            pcContainer.innerHTML = boxesHtml;
         }
 
         function getInstagramEmbedUrl(url) {
@@ -844,6 +965,36 @@
             const containerStyle = showEmbed ? "flex-col sm:flex-row items-start" : "flex-col xl:flex-row items-start xl:items-center";
             const isChecked = selectedPosts.has(item.id) ? 'checked' : '';
 
+            let sortBy = document.getElementById('sortOrder').value;
+            if (sortBy === 'date') sortBy = 'views'; 
+
+            const metricsList = [
+                { id: 'totalInteracoes', label: 'Interações', val: item.totalInteracoes, style: metricStyles.totalInteracoes },
+                { id: 'views', label: 'Views', val: item.views, style: metricStyles.views },
+                { id: 'likes', label: 'Curtidas', val: item.likes, style: metricStyles.likes },
+                { id: 'comments', label: 'Coment.', val: item.comments, style: metricStyles.comments },
+                { id: 'shares', label: 'Compartilh.', val: item.shares, style: metricStyles.shares },
+                { id: 'retweets', label: 'Retweets', val: item.retweets, style: metricStyles.retweets }
+            ];
+
+            let metricsHtml = metricsList.map(m => {
+                if (m.id === sortBy) {
+                    return `
+                        <div class="${m.style.bg} px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-center border ${m.style.border} min-w-[80px]">
+                            <p class="text-[9px] sm:text-[10px] ${m.style.textSm} font-bold uppercase tracking-wider mb-0.5">${m.label}</p>
+                            <p class="text-lg sm:text-xl font-bold ${m.style.textLg}">${m.val.toLocaleString('pt-BR')}</p>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="text-center px-1 sm:px-2 flex flex-col items-center justify-center" title="${m.label}">
+                            <div class="flex justify-center ${m.style.defaultColor} mb-1 opacity-80"><i data-lucide="${m.style.icon}" class="w-4 h-4"></i></div>
+                            <p class="text-sm font-bold text-slate-700">${m.val.toLocaleString('pt-BR')}</p>
+                        </div>
+                    `;
+                }
+            }).join('');
+
             return `
             <div class="p-4 sm:p-6 flex ${containerStyle} gap-6 hover:bg-slate-50 transition border-b border-slate-50 last:border-0 relative">
                 
@@ -870,33 +1021,8 @@
                     
                     <p class="text-sm font-medium line-clamp-3 text-slate-800 mt-2 pr-4">${item.desc}</p>
                     
-                    <div class="flex flex-wrap gap-4 pt-4 border-t border-slate-100 mt-4">
-                        <div class="bg-rose-50 px-4 py-2 rounded-lg text-center border border-rose-100 min-w-[100px]">
-                            <p class="text-[10px] text-rose-600 font-bold uppercase tracking-wider">Interações</p>
-                            <p class="text-xl font-bold text-rose-700">${item.totalInteracoes.toLocaleString('pt-BR')}</p>
-                        </div>
-                        <div class="flex gap-4 sm:gap-6 items-center px-2">
-                            <div class="text-center" title="Visualizações">
-                                <div class="flex justify-center text-slate-400 mb-1"><i data-lucide="eye" class="w-4 h-4"></i></div>
-                                <p class="text-sm font-bold text-slate-700">${item.views.toLocaleString('pt-BR')}</p>
-                            </div>
-                            <div class="text-center hidden sm:block" title="Curtidas">
-                                <div class="flex justify-center text-rose-400 mb-1"><i data-lucide="heart" class="w-4 h-4"></i></div>
-                                <p class="text-sm font-bold text-slate-700">${item.likes.toLocaleString('pt-BR')}</p>
-                            </div>
-                            <div class="text-center hidden sm:block" title="Comentários">
-                                <div class="flex justify-center text-emerald-400 mb-1"><i data-lucide="message-circle" class="w-4 h-4"></i></div>
-                                <p class="text-sm font-bold text-slate-700">${item.comments.toLocaleString('pt-BR')}</p>
-                            </div>
-                            <div class="text-center hidden sm:block" title="Compartilhamentos">
-                                <div class="flex justify-center text-blue-400 mb-1"><i data-lucide="share-2" class="w-4 h-4"></i></div>
-                                <p class="text-sm font-bold text-slate-700">${item.shares.toLocaleString('pt-BR')}</p>
-                            </div>
-                            <div class="text-center hidden sm:block" title="Retweets">
-                                <div class="flex justify-center text-sky-400 mb-1"><i data-lucide="repeat" class="w-4 h-4"></i></div>
-                                <p class="text-sm font-bold text-slate-700">${item.retweets.toLocaleString('pt-BR')}</p>
-                            </div>
-                        </div>
+                    <div class="flex flex-wrap gap-3 sm:gap-6 pt-4 border-t border-slate-100 mt-4 items-center">
+                        ${metricsHtml}
                     </div>
                 </div>
             </div>
@@ -931,7 +1057,6 @@
 
             container.innerHTML = currentItems.map((item, localIndex) => {
                 const globalRankIndex = startIndex + localIndex + 1;
-                // Exibe a miniatura para TODOS os posts carregados na página atual
                 return generatePostCardHTML(item, globalRankIndex, true);
             }).join('');
 
