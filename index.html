@@ -28,16 +28,20 @@
                 <div class="w-14 h-14 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 flex-shrink-0">
                     <i data-lucide="shield" class="w-7 h-7"></i>
                 </div>
-                <div>
-                    <h1 class="text-xl font-bold text-slate-900">Dashboard @paulistao</h1>
-                    <p class="text-sm text-slate-500 font-medium">Relatório de Performance Digital</p>
-                </div>
             </div>
 
             <div class="flex flex-col gap-2 w-full lg:w-auto lg:text-right">
                 <label class="text-xs text-slate-400 uppercase tracking-wider font-bold mb-1">Status dos Dados</label>
-                <div id="sync-status" class="flex items-center justify-end gap-2 text-sm font-medium text-amber-600 bg-amber-50 px-4 py-2.5 rounded-xl border border-amber-200 transition-colors">
-                    <i data-lucide="refresh-cw" class="w-4 h-4 animate-spin"></i> Conectando ao banco de dados...
+                <div class="flex items-center gap-3 justify-end">
+                    <!-- Botão de Upload Manual -->
+                    <label class="cursor-pointer flex items-center gap-2 text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200 transition-colors shadow-sm">
+                        <i data-lucide="upload" class="w-4 h-4"></i> Upload CSV
+                        <input type="file" multiple accept=".csv" class="hidden" onchange="handleManualUpload(event)">
+                    </label>
+
+                    <div id="sync-status" class="flex items-center justify-end gap-2 text-sm font-medium text-amber-600 bg-amber-50 px-4 py-2.5 rounded-xl border border-amber-200 transition-colors">
+                        <i data-lucide="refresh-cw" class="w-4 h-4 animate-spin"></i> Conectando...
+                    </div>
                 </div>
                 <p id="sync-details" class="text-[10px] text-slate-500">Iniciando leitura das pastas...</p>
             </div>
@@ -169,7 +173,7 @@
         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <div class="p-6 bg-slate-50 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 overflow-x-auto">
                 <h2 class="font-bold text-lg text-slate-800 flex items-center gap-2 whitespace-nowrap">
-                    <i data-lucide="trophy" class="text-amber-500"></i> Galeria de Posts
+                    <i data-lucide="trophy" class="text-amber-500"></i>
                 </h2>
                 <!-- Caixas de Contagem -->
                 <div id="post-count" class="flex gap-2 items-center flex-nowrap hide-scrollbar overflow-x-auto w-full lg:w-auto">
@@ -202,7 +206,7 @@
         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <div class="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
                 <h2 class="font-bold text-lg text-slate-800 flex items-center gap-2">
-                    <i data-lucide="trending-down" class="text-rose-500"></i> Piores Desempenhos (Top 10)
+                    <i data-lucide="trending-down" class="text-rose-500"></i>
                 </h2>
                 <span class="text-sm font-medium text-rose-600 bg-rose-50 px-3 py-1 rounded-lg border border-rose-100">Menores interações</span>
             </div>
@@ -289,7 +293,7 @@
         };
 
         // ==========================================
-        // SINCRONIZAÇÃO AUTOMÁTICA COM GITHUB
+        // SINCRONIZAÇÃO AUTOMÁTICA E MANUAL
         // ==========================================
         async function carregarDadosDoGithub() {
             const pastas = ['instagram', 'facebook', 'tiktok', 'twitter'];
@@ -330,6 +334,59 @@
 
             updateFiltersUI();
             applyFiltersAndGroup();
+        }
+        
+        function handleManualUpload(event) {
+            const files = event.target.files;
+            if (files.length === 0) return;
+            
+            const statusDiv = document.getElementById('sync-status');
+            const detalhesP = document.getElementById('sync-details');
+            
+            statusDiv.className = "flex items-center justify-end gap-2 text-sm font-medium text-indigo-600 bg-indigo-50 px-4 py-2.5 rounded-xl border border-indigo-200 transition-colors";
+            statusDiv.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Lendo arquivos locais...`;
+            lucide.createIcons();
+            
+            let processed = 0;
+            
+            Array.from(files).forEach(file => {
+                const nomeArquivo = file.name.toLowerCase();
+                let plataforma = 'instagram';
+                if (nomeArquivo.includes('facebook')) plataforma = 'facebook';
+                else if (nomeArquivo.includes('tiktok')) plataforma = 'tiktok';
+                else if (nomeArquivo.includes('twitter') || nomeArquivo.includes(' x ')) plataforma = 'x';
+                
+                let contaPadrao = 'Paulistão';
+                if (nomeArquivo.includes('copinha')) contaPadrao = 'Copinha';
+                else if (nomeArquivo.includes('feminino') || nomeArquivo.includes(' f ')) contaPadrao = 'Paulistão F';
+                else if (nomeArquivo.includes('fpf')) contaPadrao = 'FPF';
+
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(resultados) {
+                        let novosPosts = [];
+                        if (plataforma === 'facebook' || plataforma === 'instagram') {
+                            novosPosts = processMetaCSV(resultados, plataforma, contaPadrao);
+                        } else {
+                            novosPosts = processTikTokTwitterCSV(resultados, plataforma, contaPadrao);
+                        }
+
+                        uploadedData[plataforma] = [...uploadedData[plataforma], ...novosPosts];
+                        processed++;
+                        
+                        if (processed === files.length) {
+                            updateFiltersUI();
+                            applyFiltersAndGroup();
+                            
+                            statusDiv.className = "flex items-center justify-end gap-2 text-sm font-medium text-emerald-600 bg-emerald-50 px-4 py-2.5 rounded-xl border border-emerald-200 transition-colors";
+                            statusDiv.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4"></i> Upload Concluído`;
+                            detalhesP.innerText = `${processed} arquivos locais adicionados.`;
+                            lucide.createIcons();
+                        }
+                    }
+                });
+            });
         }
 
         function baixarEProcessarCSV(url, plataforma, nomeArquivo) {
@@ -570,7 +627,6 @@
                 let account = primaryAccount || standardizeAccountName(rawAcc);
                 let originFolder = standardizeAccountName(fallbackAccount);
 
-                // Melhoria no parse de datas do Meta
                 let dateStrRaw = row['Horário de publicação'].split(' ')[0];
                 let dateObj = new Date(dateStrRaw);
                 if (isNaN(dateObj.getTime())) {
@@ -595,7 +651,6 @@
 
                 let totalInteracoes = likes + comments + shares + saves + retweets;
 
-                // Não ignoramos mais posts vazios, apenas definimos um texto padrão
                 let desc = rawDesc ? rawDesc : 'Post sem texto';
 
                 const tags = desc.match(/#[\wÀ-ÿ]+/g);
@@ -620,7 +675,6 @@
                 let rawDesc = row['Video Title'] || row['Tweet text'] || row['Texto'] || row['Texto do post'] || row['Título do vídeo'] || row['Texto do Tweet'] || '';
                 let dateStr = row['Create Time'] || row['time'] || row['Data'] || row['Hora da publicação'] || row['Hora'] || '';
                 
-                // Removida a barreira de texto vazio. Se não tiver URL, aí sim ignoramos.
                 if(!url) return; 
 
                 let desc = rawDesc ? rawDesc.replace(/https?:\/\/t\.co\/\S+/g, '').trim() : 'Post sem texto';
@@ -631,7 +685,6 @@
                 let account = primaryAccount || standardizeAccountName(fallbackAccount);
                 let originFolder = standardizeAccountName(fallbackAccount);
                 
-                // Parser de Data aprimorado para X e TikTok
                 let dateObj = new Date(0);
                 if (dateStr) {
                     let parsedDate = Date.parse(dateStr);
@@ -703,7 +756,6 @@
             accountFilter.innerHTML = accHtml;
         }
 
-        // Nova função geradora de chaves incluindo Data para evitar fusão de tweets genéricos
         function generateIntelligentGroupKey(text, dateObj) {
             let cleanText = cleanTextContent(text).replace(/\s+/g, '').substring(0, 50) || 'semtexto';
             let dateStr = '';
@@ -728,9 +780,6 @@
                 let baseKey = generateIntelligentGroupKey(item.desc, item.date);
                 let key = baseKey;
                 
-                // MÁGICA ANTISSUMIÇO DE POSTS: Se já existe um post desse mesmo dia e com esse mesmo texto 
-                // para ESSA plataforma específica, forçamos a criação de uma nova linha!
-                // Assim, posts idênticos da MESMA rede (Ex: 5 "Fim de Jogo" no Twitter no mesmo dia) nunca se anulam.
                 let counter = 1;
                 while (groups[key] && groups[key].platforms.has(item.platform)) {
                     key = baseKey + '_' + counter;
