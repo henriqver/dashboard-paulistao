@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
     <style>
         .plat-bg-instagram { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); }
@@ -18,370 +19,644 @@
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="bg-slate-50 font-sans text-slate-800 p-4 sm:p-6 min-h-screen relative">
+<body class="bg-[#f8fafc] font-sans text-slate-800 p-4 sm:p-8 min-h-screen relative">
 
-    <div class="max-w-6xl mx-auto space-y-6 pb-24">
+    <div class="max-w-7xl mx-auto space-y-6 pb-24">
         
-        <!-- Cabeçalho e Sincronização -->
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-            <div class="flex items-center gap-4">
-                <div class="w-14 h-14 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 flex-shrink-0">
-                    <i data-lucide="shield" class="w-7 h-7"></i>
-                </div>
+        <!-- Cabeçalho Unificado -->
+        <div class="flex flex-col sm:flex-row items-center justify-between bg-white p-3 rounded-2xl shadow-sm border border-slate-200/80 gap-4">
+            <div class="flex items-center gap-2">
+                <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="p-2.5 rounded-xl transition flex items-center justify-center bg-indigo-600 text-white shadow-sm" title="Painel Principal">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                </button>
+                <button onclick="switchTab('analytics')" id="tab-btn-analytics" class="p-2.5 rounded-xl transition flex items-center justify-center bg-transparent text-slate-600 hover:bg-slate-100" title="Inteligência & Comparativos">
+                    <i data-lucide="pie-chart" class="w-5 h-5"></i>
+                </button>
+                <div class="w-px h-6 bg-slate-200 mx-1"></div>
+                <button onclick="switchTab('petrobras')" id="tab-btn-petrobras" class="p-2.5 rounded-xl transition flex items-center justify-center bg-transparent text-slate-600 hover:bg-slate-100" title="Painel Petrobras">
+                    <i data-lucide="droplet" class="w-5 h-5"></i>
+                </button>
             </div>
 
-            <div class="flex flex-col gap-2 w-full lg:w-auto lg:text-right">
-                <label class="text-xs text-slate-400 uppercase tracking-wider font-bold mb-1">Status dos Dados</label>
-                <div class="flex items-center gap-3 justify-end">
-                    <!-- Botão de Upload Manual -->
-                    <label class="cursor-pointer flex items-center gap-2 text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200 transition-colors shadow-sm">
-                        <i data-lucide="upload" class="w-4 h-4"></i> Upload CSV
-                        <input type="file" multiple accept=".csv" class="hidden" onchange="handleManualUpload(event)">
-                    </label>
+            <!-- Status Discreto + Upload -->
+            <div class="flex items-center gap-3 w-full sm:w-auto justify-end flex-wrap">
+                <span id="sync-details" class="text-[11px] text-slate-400 font-medium hidden md:inline">Sincronizando...</span>
+                <div id="sync-status" class="flex items-center gap-1.5 text-xs font-semibold text-amber-600 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5 animate-spin"></i> Conectando
+                </div>
+                <label class="cursor-pointer flex items-center gap-2 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 px-3.5 py-2 rounded-xl border border-slate-200 transition shadow-sm">
+                    <i data-lucide="upload" class="w-3.5 h-3.5 text-indigo-600"></i> Upload CSV
+                    <input type="file" multiple accept=".csv" class="hidden" onchange="handleManualUpload(event)">
+                </label>
+            </div>
+        </div>
 
-                    <div id="sync-status" class="flex items-center justify-end gap-2 text-sm font-medium text-amber-600 bg-amber-50 px-4 py-2.5 rounded-xl border border-amber-200 transition-colors">
-                        <i data-lucide="refresh-cw" class="w-4 h-4 animate-spin"></i> Conectando...
+        <!-- ABA 1: PAINEL PRINCIPAL -->
+        <div id="tab-content-dashboard" class="space-y-6">
+
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col items-center text-center">
+                    <div class="flex items-center gap-1.5 mb-2 text-indigo-500">
+                        <i data-lucide="layers" class="w-4 h-4"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-wider">Posts Totais</span>
                     </div>
+                    <p id="kpi-posts" class="text-2xl font-black text-slate-900">0</p>
                 </div>
-                <p id="sync-details" class="text-[10px] text-slate-500">Iniciando leitura das pastas...</p>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col items-center text-center">
+                    <div class="flex items-center gap-1.5 mb-2 text-slate-500">
+                        <i data-lucide="eye" class="w-4 h-4"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-wider">Views</span>
+                    </div>
+                    <p id="kpi-views" class="text-2xl font-black text-slate-900">0</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col items-center text-center">
+                    <div class="flex items-center gap-1.5 mb-2 text-rose-600">
+                        <i data-lucide="activity" class="w-4 h-4"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-wider">Interações</span>
+                    </div>
+                    <p id="kpi-interactions" class="text-2xl font-black text-slate-900">0</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col items-center text-center">
+                    <div class="flex items-center gap-1.5 mb-2 text-rose-500">
+                        <i data-lucide="heart" class="w-4 h-4"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-wider">Curtidas</span>
+                    </div>
+                    <p id="kpi-likes" class="text-2xl font-black text-slate-900">0</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col items-center text-center">
+                    <div class="flex items-center gap-1.5 mb-2 text-emerald-500">
+                        <i data-lucide="message-circle" class="w-4 h-4"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-wider">Comentários</span>
+                    </div>
+                    <p id="kpi-comments" class="text-2xl font-black text-slate-900">0</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col items-center text-center">
+                    <div class="flex items-center gap-1.5 mb-2 text-blue-500">
+                        <i data-lucide="share-2" class="w-4 h-4"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-wider">Compartilhamentos</span>
+                    </div>
+                    <p id="kpi-shares" class="text-2xl font-black text-slate-900">0</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col items-center text-center">
+                    <div class="flex items-center gap-1.5 mb-2 text-sky-500">
+                        <i data-lucide="repeat" class="w-4 h-4"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-wider">Retweets</span>
+                    </div>
+                    <p id="kpi-retweets" class="text-2xl font-black text-slate-900">0</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col items-center text-center">
+                    <div class="flex items-center gap-1.5 mb-2 text-amber-500">
+                        <i data-lucide="bookmark" class="w-4 h-4"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-wider">Salvos</span>
+                    </div>
+                    <p id="kpi-saves" class="text-2xl font-black text-slate-900">0</p>
+                </div>
             </div>
-        </div>
 
-        <!-- KPIs em Grid Padronizado (2 Linhas x 4 Colunas) -->
-        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
-                <div class="flex items-center gap-1.5 mb-2 text-indigo-400">
-                    <i data-lucide="layers" class="w-4 h-4"></i>
-                    <span class="text-[10px] font-bold uppercase tracking-wider">Posts Totais</span>
-                </div>
-                <p id="kpi-posts" class="text-xl font-black text-slate-800">0</p>
-            </div>
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
-                <div class="flex items-center gap-1.5 mb-2 text-slate-400">
-                    <i data-lucide="eye" class="w-4 h-4"></i>
-                    <span class="text-[10px] font-bold uppercase tracking-wider">Views</span>
-                </div>
-                <p id="kpi-views" class="text-xl font-black text-slate-800">0</p>
-            </div>
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
-                <div class="flex items-center gap-1.5 mb-2 text-rose-500">
-                    <i data-lucide="activity" class="w-4 h-4"></i>
-                    <span class="text-[10px] font-bold uppercase tracking-wider">Interações</span>
-                </div>
-                <p id="kpi-interactions" class="text-xl font-black text-slate-800">0</p>
-            </div>
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
-                <div class="flex items-center gap-1.5 mb-2 text-rose-400">
-                    <i data-lucide="heart" class="w-4 h-4"></i>
-                    <span class="text-[10px] font-bold uppercase tracking-wider">Curtidas</span>
-                </div>
-                <p id="kpi-likes" class="text-xl font-black text-slate-800">0</p>
-            </div>
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
-                <div class="flex items-center gap-1.5 mb-2 text-emerald-400">
-                    <i data-lucide="message-circle" class="w-4 h-4"></i>
-                    <span class="text-[10px] font-bold uppercase tracking-wider">Comentários</span>
-                </div>
-                <p id="kpi-comments" class="text-xl font-black text-slate-800">0</p>
-            </div>
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
-                <div class="flex items-center gap-1.5 mb-2 text-blue-400">
-                    <i data-lucide="share-2" class="w-4 h-4"></i>
-                    <span class="text-[10px] font-bold uppercase tracking-wider">Compartilhamentos</span>
-                </div>
-                <p id="kpi-shares" class="text-xl font-black text-slate-800">0</p>
-            </div>
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
-                <div class="flex items-center gap-1.5 mb-2 text-sky-400">
-                    <i data-lucide="repeat" class="w-4 h-4"></i>
-                    <span class="text-[10px] font-bold uppercase tracking-wider">Retweets</span>
-                </div>
-                <p id="kpi-retweets" class="text-xl font-black text-slate-800">0</p>
-            </div>
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
-                <div class="flex items-center gap-1.5 mb-2 text-amber-400">
-                    <i data-lucide="bookmark" class="w-4 h-4"></i>
-                    <span class="text-[10px] font-bold uppercase tracking-wider">Salvos</span>
-                </div>
-                <p id="kpi-saves" class="text-xl font-black text-slate-800">0</p>
-            </div>
-        </div>
-
-        <!-- Barra de Filtros Inteligente -->
-        <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col space-y-4">
-            
-            <div class="flex flex-col xl:flex-row gap-4 xl:items-center border-b border-slate-100 pb-4">
-                <div class="flex flex-wrap gap-2 flex-1">
-                    <span class="text-xs font-bold text-slate-400 uppercase flex items-center mr-2">Plataformas:</span>
-                    <button onclick="togglePlatform('instagram')" id="btn-plat-instagram" class="px-3 py-1.5 rounded-lg border bg-indigo-600 text-white font-medium text-sm transition">Instagram</button>
-                    <button onclick="togglePlatform('facebook')" id="btn-plat-facebook" class="px-3 py-1.5 rounded-lg border bg-indigo-600 text-white font-medium text-sm transition">Facebook</button>
-                    <button onclick="togglePlatform('tiktok')" id="btn-plat-tiktok" class="px-3 py-1.5 rounded-lg border bg-indigo-600 text-white font-medium text-sm transition">TikTok</button>
-                    <button onclick="togglePlatform('x')" id="btn-plat-x" class="px-3 py-1.5 rounded-lg border bg-indigo-600 text-white font-medium text-sm transition">X (Twitter)</button>
-                </div>
-                
-                <div class="flex flex-wrap items-center gap-2">
-                    <span class="text-xs font-bold text-slate-400 uppercase">Período:</span>
-                    <input type="date" id="date-start" value="" class="w-32 p-1.5 border border-slate-200 rounded-lg outline-none focus:border-indigo-500 text-sm text-slate-600">
-                    <span class="text-slate-400 text-sm">até</span>
-                    <input type="date" id="date-end" value="" class="w-32 p-1.5 border border-slate-200 rounded-lg outline-none focus:border-indigo-500 text-sm text-slate-600">
+            <!-- Filtros -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col space-y-4">
+                <div class="flex flex-col xl:flex-row gap-4 xl:items-center border-b border-slate-100 pb-4">
+                    <div class="flex flex-wrap gap-2 flex-1 items-center">
+                        <span class="text-xs font-bold text-slate-400 uppercase mr-2">Plataformas:</span>
+                        <button onclick="togglePlatform('instagram', 'dashboard')" id="btn-plat-instagram" class="px-3.5 py-1.5 rounded-xl border bg-indigo-600 text-white font-semibold text-xs transition shadow-sm">Instagram</button>
+                        <button onclick="togglePlatform('facebook', 'dashboard')" id="btn-plat-facebook" class="px-3.5 py-1.5 rounded-xl border bg-indigo-600 text-white font-semibold text-xs transition shadow-sm">Facebook</button>
+                        <button onclick="togglePlatform('tiktok', 'dashboard')" id="btn-plat-tiktok" class="px-3.5 py-1.5 rounded-xl border bg-indigo-600 text-white font-semibold text-xs transition shadow-sm">TikTok</button>
+                        <button onclick="togglePlatform('x', 'dashboard')" id="btn-plat-x" class="px-3.5 py-1.5 rounded-xl border bg-indigo-600 text-white font-semibold text-xs transition shadow-sm">X (Twitter)</button>
+                    </div>
                     
-                    <div class="flex gap-2 ml-1 pl-3 border-l border-slate-200">
-                        <button onclick="setQuickDate(15)" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition">15 dias</button>
-                        <button onclick="setQuickDate(30)" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition">30 dias</button>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-xs font-bold text-slate-400 uppercase">Período:</span>
+                        <input type="date" id="date-start" class="w-32 p-2 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 text-xs font-semibold text-slate-700 bg-slate-50">
+                        <span class="text-slate-400 text-xs font-semibold">até</span>
+                        <input type="date" id="date-end" class="w-32 p-2 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 text-xs font-semibold text-slate-700 bg-slate-50">
+                        
+                        <div class="flex gap-1.5 ml-1 pl-3 border-l border-slate-200">
+                            <button onclick="setQuickDate(15, 'dashboard')" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition">15d</button>
+                            <button onclick="setQuickDate(30, 'dashboard')" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition">30d</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="relative">
+                        <i data-lucide="search" class="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4"></i>
+                        <input type="text" id="searchInput" list="hashtag-suggestions" placeholder="Buscar palavra ou hashtag..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 text-xs font-semibold text-slate-700">
+                        <datalist id="hashtag-suggestions"></datalist>
+                    </div>
+                    <div class="relative">
+                        <i data-lucide="bar-chart-2" class="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4"></i>
+                        <select id="sortOrder" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 text-xs font-semibold text-slate-700 appearance-none">
+                            <option value="views" selected>Ordem: Views</option>
+                            <option value="totalInteracoes">Ordem: Interações</option>
+                            <option value="date">Ordem: Mais Recentes</option>
+                            <option value="likes">Ordem: Curtidas</option>
+                            <option value="comments">Ordem: Comentários</option>
+                            <option value="shares">Ordem: Compartilh.</option>
+                            <option value="retweets">Ordem: Retweets</option>
+                            <option value="saves">Ordem: Salvamentos</option>
+                        </select>
+                    </div>
+                    <div class="relative">
+                        <i data-lucide="layout" class="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4"></i>
+                        <select id="formatFilter" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 text-xs font-semibold text-slate-700 appearance-none">
+                            <option value="Todos">Formatos</option>
+                        </select>
+                    </div>
+                    <div class="relative">
+                        <i data-lucide="user" class="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4"></i>
+                        <select id="accountFilter" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 text-xs font-semibold text-slate-700 appearance-none"></select>
                     </div>
                 </div>
             </div>
 
-            <div class="flex flex-col md:flex-row gap-4">
-                <div class="flex-1 relative">
-                    <i data-lucide="search" class="absolute left-3 top-3.5 text-slate-400 w-4 h-4"></i>
-                    <input type="text" id="searchInput" list="hashtag-suggestions" placeholder="Buscar por palavra ou hashtag..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 transition font-medium text-slate-700">
-                    <datalist id="hashtag-suggestions"></datalist>
-                </div>
-
-                <div class="relative w-full md:w-56 flex-shrink-0">
-                    <i data-lucide="bar-chart-2" class="absolute left-3 top-3.5 text-slate-400 w-4 h-4"></i>
-                    <select id="sortOrder" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 font-medium text-slate-700 appearance-none">
-                        <option value="views" selected>Ordem: Visualizações</option>
-                        <option value="totalInteracoes">Ordem: Interações</option>
-                        <option value="date">Ordem: Mais Recentes</option>
-                        <option value="likes">Ordem: Curtidas</option>
-                        <option value="comments">Ordem: Comentários</option>
-                        <option value="shares">Ordem: Compartilh.</option>
-                        <option value="retweets">Ordem: Retweets</option>
-                        <option value="saves">Ordem: Salvamentos</option>
-                    </select>
+            <!-- Galeria -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+                <div class="p-6 bg-slate-50/50 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <div class="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-500">
+                            <i data-lucide="trophy" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    <div id="post-count" class="flex gap-2 items-center flex-nowrap hide-scrollbar overflow-x-auto"></div>
                 </div>
                 
-                <div class="relative w-full md:w-48 flex-shrink-0">
-                    <i data-lucide="layout" class="absolute left-3 top-3.5 text-slate-400 w-4 h-4"></i>
-                    <select id="formatFilter" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 font-medium text-slate-700 appearance-none">
-                        <option value="Todos">Tipos de Post</option>
-                    </select>
+                <div id="rankingContainer" class="divide-y divide-slate-100">
+                    <div class="p-12 text-center text-slate-400 font-medium">Sincronizando banco de dados...</div>
                 </div>
 
-                <div class="relative w-full md:w-48 flex-shrink-0">
-                    <i data-lucide="user" class="absolute left-3 top-3.5 text-slate-400 w-4 h-4"></i>
-                    <select id="accountFilter" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 font-medium text-slate-700 appearance-none">
-                        <!-- Preenchido via JS -->
-                    </select>
+                <div class="p-4 bg-slate-50/50 border-t border-slate-100 flex justify-between items-center">
+                    <button id="btn-prev" onclick="changePage(-1, 'dashboard')" class="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-50 transition shadow-sm">Anterior</button>
+                    <span class="text-xs text-slate-500 font-semibold">Página <span id="current-page">1</span> de <span id="total-pages">1</span></span>
+                    <button id="btn-next" onclick="changePage(1, 'dashboard')" class="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-50 transition shadow-sm">Próxima</button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+                <div class="p-6 bg-slate-50/50 border-b border-slate-100 flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <div class="w-9 h-9 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-500">
+                            <i data-lucide="trending-down" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                </div>
+                <div id="worstContainer" class="divide-y divide-slate-100">
+                    <div class="p-12 text-center text-slate-400 font-medium">Sincronizando banco de dados...</div>
                 </div>
             </div>
         </div>
 
-        <!-- Ranking Consolidado -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-            <div class="p-6 bg-slate-50 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 overflow-x-auto">
-                <h2 class="font-bold text-lg text-slate-800 flex items-center gap-2 whitespace-nowrap">
-                    <i data-lucide="trophy" class="text-amber-500"></i>
-                </h2>
-                <!-- Caixas de Contagem -->
-                <div id="post-count" class="flex gap-2 items-center flex-nowrap hide-scrollbar overflow-x-auto w-full lg:w-auto">
-                    <!-- Preenchido via JS -->
+        <!-- ABA: PAINEL PETROBRAS -->
+        <div id="tab-content-petrobras" class="hidden space-y-6">
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col items-center text-center">
+                    <div class="flex items-center gap-1.5 mb-2 text-indigo-500">
+                        <i data-lucide="layers" class="w-4 h-4"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-wider">Posts Totais</span>
+                    </div>
+                    <p id="p-kpi-posts" class="text-2xl font-black text-slate-900">0</p>
                 </div>
-            </div>
-            
-            <div id="rankingContainer" class="divide-y divide-slate-100">
-                <div class="p-12 text-center text-slate-400">
-                    <i data-lucide="database" class="w-12 h-12 mx-auto mb-3 opacity-20"></i>
-                    <p>Sincronizando dados com o servidor...</p>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col items-center text-center">
+                    <div class="flex items-center gap-1.5 mb-2 text-slate-500">
+                        <i data-lucide="eye" class="w-4 h-4"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-wider">Views</span>
+                    </div>
+                    <p id="p-kpi-views" class="text-2xl font-black text-slate-900">0</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col items-center text-center">
+                    <div class="flex items-center gap-1.5 mb-2 text-rose-600">
+                        <i data-lucide="activity" class="w-4 h-4"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-wider">Interações</span>
+                    </div>
+                    <p id="p-kpi-interactions" class="text-2xl font-black text-slate-900">0</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col items-center text-center">
+                    <div class="flex items-center gap-1.5 mb-2 text-rose-500">
+                        <i data-lucide="heart" class="w-4 h-4"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-wider">Curtidas</span>
+                    </div>
+                    <p id="p-kpi-likes" class="text-2xl font-black text-slate-900">0</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col items-center text-center">
+                    <div class="flex items-center gap-1.5 mb-2 text-emerald-500">
+                        <i data-lucide="message-circle" class="w-4 h-4"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-wider">Comentários</span>
+                    </div>
+                    <p id="p-kpi-comments" class="text-2xl font-black text-slate-900">0</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col items-center text-center">
+                    <div class="flex items-center gap-1.5 mb-2 text-blue-500">
+                        <i data-lucide="share-2" class="w-4 h-4"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-wider">Compartilhamentos</span>
+                    </div>
+                    <p id="p-kpi-shares" class="text-2xl font-black text-slate-900">0</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col items-center text-center">
+                    <div class="flex items-center gap-1.5 mb-2 text-sky-500">
+                        <i data-lucide="repeat" class="w-4 h-4"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-wider">Retweets</span>
+                    </div>
+                    <p id="p-kpi-retweets" class="text-2xl font-black text-slate-900">0</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col items-center text-center">
+                    <div class="flex items-center gap-1.5 mb-2 text-amber-500">
+                        <i data-lucide="bookmark" class="w-4 h-4"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-wider">Salvos</span>
+                    </div>
+                    <p id="p-kpi-saves" class="text-2xl font-black text-slate-900">0</p>
                 </div>
             </div>
 
-            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
-                <button id="btn-prev" onclick="changePage(-1)" class="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition">
-                    Anterior
-                </button>
-                <span class="text-sm text-slate-500 font-medium">Página <span id="current-page">1</span> de <span id="total-pages">1</span></span>
-                <button id="btn-next" onclick="changePage(1)" class="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition">
-                    Próxima
-                </button>
+            <!-- Filtros -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col space-y-4">
+                <div class="flex flex-col xl:flex-row gap-4 xl:items-center border-b border-slate-100 pb-4">
+                    <div class="flex flex-wrap gap-2 flex-1 items-center">
+                        <span class="text-xs font-bold text-slate-400 uppercase mr-2">Plataformas:</span>
+                        <button onclick="togglePlatform('instagram', 'petrobras')" id="btn-plat-instagram-p" class="px-3.5 py-1.5 rounded-xl border bg-indigo-600 text-white font-semibold text-xs transition shadow-sm">Instagram</button>
+                        <button onclick="togglePlatform('facebook', 'petrobras')" id="btn-plat-facebook-p" class="px-3.5 py-1.5 rounded-xl border bg-indigo-600 text-white font-semibold text-xs transition shadow-sm">Facebook</button>
+                        <button onclick="togglePlatform('tiktok', 'petrobras')" id="btn-plat-tiktok-p" class="px-3.5 py-1.5 rounded-xl border bg-indigo-600 text-white font-semibold text-xs transition shadow-sm">TikTok</button>
+                        <button onclick="togglePlatform('x', 'petrobras')" id="btn-plat-x-p" class="px-3.5 py-1.5 rounded-xl border bg-indigo-600 text-white font-semibold text-xs transition shadow-sm">X (Twitter)</button>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-xs font-bold text-slate-400 uppercase">Período:</span>
+                        <input type="date" id="p-date-start" class="w-32 p-2 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 text-xs font-semibold text-slate-700 bg-slate-50">
+                        <span class="text-slate-400 text-xs font-semibold">até</span>
+                        <input type="date" id="p-date-end" class="w-32 p-2 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 text-xs font-semibold text-slate-700 bg-slate-50">
+                        
+                        <div class="flex gap-1.5 ml-1 pl-3 border-l border-slate-200">
+                            <button onclick="setQuickDate(15, 'petrobras')" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition">15d</button>
+                            <button onclick="setQuickDate(30, 'petrobras')" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition">30d</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="relative">
+                        <i data-lucide="search" class="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4"></i>
+                        <input type="text" id="p-searchInput" placeholder="Buscar palavra extra..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 text-xs font-semibold text-slate-700">
+                    </div>
+                    <div class="relative">
+                        <i data-lucide="bar-chart-2" class="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4"></i>
+                        <select id="p-sortOrder" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 text-xs font-semibold text-slate-700 appearance-none">
+                            <option value="views" selected>Ordem: Views</option>
+                            <option value="totalInteracoes">Ordem: Interações</option>
+                            <option value="date">Ordem: Mais Recentes</option>
+                        </select>
+                    </div>
+                    <div class="relative">
+                        <i data-lucide="layout" class="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4"></i>
+                        <select id="p-formatFilter" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 text-xs font-semibold text-slate-700 appearance-none">
+                            <option value="Todos">Formatos</option>
+                            <option value="Imagem">Imagem</option>
+                            <option value="Vídeo">Vídeo</option>
+                            <option value="Carrossel">Carrossel</option>
+                        </select>
+                    </div>
+                    <div class="relative">
+                        <i data-lucide="droplet" class="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4"></i>
+                        <select id="p-categoryFilter" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 text-xs font-semibold text-slate-700 appearance-none">
+                            <option value="Todos">Todas as Categorias</option>
+                            <option value="Paulistão F Petrobras">Paulistão F Petrobras</option>
+                            <option value="Copa Paulista F Petrobras">Copa Paulista F Petrobras</option>
+                            <option value="Taça Paulistana Petrobras">Taça Paulistana Petrobras</option>
+                            <option value="Superclássico F Petrobras">Superclássico F Petrobras</option>
+                            <option value="Copinha F Petrobras">Copinha F Petrobras</option>
+                            <option value="Paulista S-20 Petrobras">Paulista S-20 Petrobras</option>
+                            <option value="Paulista S-17 Petrobras">Paulista S-17 Petrobras</option>
+                            <option value="Paulista S-15 Petrobras">Paulista S-15 Petrobras</option>
+                            <option value="Paulista S-13 Petrobras">Paulista S-13 Petrobras</option>
+                            <option value="Festival Paulista Petrobras">Festival Paulista Petrobras</option>
+                            <option value="Torneio F Petrobras">Torneio F Petrobras</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+                <div class="p-6 bg-slate-50/50 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <div class="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-500">
+                            <i data-lucide="trophy" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    <div id="p-post-count" class="flex gap-2 items-center flex-nowrap hide-scrollbar overflow-x-auto"></div>
+                </div>
+                <div id="petrobrasRankingContainer" class="divide-y divide-slate-100">
+                    <div class="p-12 text-center text-slate-400 font-medium">Sincronizando banco de dados...</div>
+                </div>
+                <div class="p-4 bg-slate-50/50 border-t border-slate-100 flex justify-between items-center">
+                    <button id="p-btn-prev" onclick="changePage(-1, 'petrobras')" class="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-50 transition shadow-sm">Anterior</button>
+                    <span class="text-xs text-slate-500 font-semibold">Página <span id="p-current-page">1</span> de <span id="p-total-pages">1</span></span>
+                    <button id="p-btn-next" onclick="changePage(1, 'petrobras')" class="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-50 transition shadow-sm">Próxima</button>
+                </div>
             </div>
         </div>
 
-        <!-- Divisor Invisível para Espaçamento Extra -->
-        <div class="h-8 sm:h-12 w-full"></div>
-
-        <!-- Piores Posts -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-            <div class="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-                <h2 class="font-bold text-lg text-slate-800 flex items-center gap-2">
-                    <i data-lucide="trending-down" class="text-rose-500"></i>
-                </h2>
-                <span class="text-sm font-medium text-rose-600 bg-rose-50 px-3 py-1 rounded-lg border border-rose-100">Menores interações</span>
-            </div>
+        <!-- ABA 3: INTELIGÊNCIA & COMPARATIVOS -->
+        <div id="tab-content-analytics" class="hidden space-y-6">
             
-            <div id="worstContainer" class="divide-y divide-slate-100">
-                <div class="p-12 text-center text-slate-400">
-                    <i data-lucide="database" class="w-12 h-12 mx-auto mb-3 opacity-20"></i>
-                    <p>Sincronizando dados com o servidor...</p>
+            <div class="sticky top-4 z-40 bg-white/95 backdrop-blur-md p-4 sm:p-5 rounded-2xl shadow-lg border border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                        <i data-lucide="sliders" class="w-4 h-4"></i>
+                    </div>
+                    <span class="font-bold text-slate-700 text-sm hidden sm:block">Filtros Globais</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                    <div class="flex items-center gap-2 flex-1 sm:flex-initial">
+                        <span class="text-xs font-bold text-slate-400 uppercase">Conta:</span>
+                        <select id="globalAnalAcc" onchange="onGlobalFilterChange()" class="w-full sm:w-auto px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 outline-none text-xs font-semibold text-slate-700 shadow-inner">
+                            <option value="Todas" selected>Todas as Contas</option>
+                            <option value="paulistao">Paulistão</option>
+                            <option value="paulistao_f">Paulistão F</option>
+                            <option value="copinha">Copinha</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-2 flex-1 sm:flex-initial">
+                        <span class="text-xs font-bold text-slate-400 uppercase">Métrica:</span>
+                        <select id="globalAnalMetric" onchange="onGlobalFilterChange()" class="w-full sm:w-auto px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 outline-none text-xs font-semibold text-slate-700 shadow-inner">
+                            <option value="views" selected>Views</option>
+                            <option value="totalInteracoes">Interações</option>
+                            <option value="likes">Curtidas</option>
+                            <option value="comments">Comentários</option>
+                            <option value="shares_retweets">Compartilhamentos / Retweets</option>
+                            <option value="shares">Compartilhamentos</option>
+                            <option value="retweets">Retweets</option>
+                        </select>
+                    </div>
                 </div>
             </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80 space-y-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                            <i data-lucide="calendar-range" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-wrap items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200/60">
+                        <div class="flex items-center gap-1.5 px-2 transition-opacity" id="customMonthsContainer">
+                            <select id="monthA" onchange="onMonthDropdownChange()" class="px-2 py-1 bg-white rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 transition-colors"></select>
+                            <span id="label-contra-text" class="text-slate-400 text-xs font-medium transition-colors">contra</span>
+                            <select id="monthB" onchange="onMonthDropdownChange()" class="px-2 py-1 bg-white rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 transition-colors"></select>
+                        </div>
+                        <div class="w-px h-5 bg-slate-200 mx-1"></div>
+                        <button onclick="setPeriodComparisonMode('15d')" id="btn-mode-15d" class="px-3 py-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-lg text-xs font-bold transition">15D</button>
+                        <button onclick="setPeriodComparisonMode('30d')" id="btn-mode-30d" class="px-3 py-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-lg text-xs font-bold transition">30D</button>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                    <div class="h-72 lg:col-span-2">
+                        <canvas id="chartPeriodComparison"></canvas>
+                    </div>
+                    <div id="period-summary-box" class="bg-slate-50 p-5 rounded-2xl border border-slate-200/60 flex flex-col justify-center items-center text-center">
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80 space-y-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600">
+                            <i data-lucide="layout" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-xs font-bold text-slate-400 uppercase">Período:</span>
+                        <select id="formatMonthSelect" onchange="onFormatMonthChange()" class="px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 outline-none text-xs font-semibold text-slate-700">
+                            <option value="todos" selected>Todos os Períodos</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="h-72"><canvas id="chartFormatsPerformance"></canvas></div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80 space-y-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-600">
+                            <i data-lucide="share-2" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-xs font-bold text-slate-400 uppercase">Período:</span>
+                        <select id="socialMonthSelect" onchange="onSocialMonthChange()" class="px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 outline-none text-xs font-semibold text-slate-700">
+                            <option value="todos" selected>Todos os Períodos</option>
+                        </select>
+                        <span class="text-xs font-bold text-slate-400 uppercase ml-2 hidden sm:inline">Formato:</span>
+                        <select id="socialFormatSelect" onchange="onSocialFormatChange()" class="px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 outline-none text-xs font-semibold text-slate-700">
+                            <option value="Todos" selected>Todos os Formatos</option>
+                            <option value="Imagem">Imagem</option>
+                            <option value="Vídeo">Vídeo</option>
+                            <option value="Carrossel">Carrossel</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="h-72"><canvas id="chartSocialPerformance"></canvas></div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80 space-y-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+                            <i data-lucide="trending-up" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="toggleTimelineMode()" id="btn-timeline-mode" class="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition shadow-sm">Ver Ano Inteiro</button>
+                    </div>
+                </div>
+                
+                <div class="h-72"><canvas id="chartMonthlyEvolutionLine"></canvas></div>
+
+                <div class="pt-6 border-t border-slate-100 space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                        <span class="text-xs font-bold uppercase text-slate-400 tracking-wider">Resumo Consolidado por Mês</span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-slate-400 uppercase">Exibir:</span>
+                            <select id="monthlyCardMetric" onchange="onMonthlyCardMetricChange()" class="px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-200 outline-none text-xs font-semibold text-slate-700">
+                                <option value="interacao" selected>Interações</option>
+                                <option value="views">Views</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="monthly-cards-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3"></div>
+                </div>
+            </div>
+
         </div>
     </div>
 
-    <!-- Barra Flutuante de Seleção (Múltiplos Posts) -->
-    <div id="selection-bar" class="hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white px-4 py-4 md:px-8 md:py-4 rounded-2xl shadow-2xl items-center gap-4 md:gap-8 z-50 w-[95%] max-w-5xl border border-slate-700 transition-all duration-300">
+    <!-- Barra Flutuante -->
+    <div id="selection-bar" class="hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-xl items-center gap-6 z-50 w-[95%] max-w-4xl border border-slate-800">
         <div class="flex flex-col items-center flex-shrink-0">
-            <span class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Selecionados</span>
-            <span class="text-xl md:text-2xl font-black text-indigo-400"><span id="sel-count">0</span></span>
+            <span class="text-[9px] text-slate-400 uppercase tracking-wider font-bold">Selecionados</span>
+            <span class="text-xl font-black text-indigo-400"><span id="sel-count">0</span></span>
         </div>
-        
-        <div class="h-10 w-px bg-slate-700 hidden md:block"></div>
-        
-        <div class="flex gap-4 md:gap-8 flex-1 overflow-x-auto hide-scrollbar snap-x">
-            <div class="flex flex-col min-w-max snap-start">
-                <span class="text-[10px] text-slate-400 uppercase font-bold">Interações</span>
-                <span class="text-lg md:text-xl font-bold" id="sel-int">0</span>
-            </div>
-            <div class="flex flex-col min-w-max snap-start">
-                <span class="text-[10px] text-slate-400 uppercase font-bold">Views</span>
-                <span class="text-lg md:text-xl font-bold" id="sel-views">0</span>
-            </div>
-            <div class="flex flex-col min-w-max snap-start">
-                <span class="text-[10px] text-slate-400 uppercase font-bold">Curtidas</span>
-                <span class="text-lg md:text-xl font-bold" id="sel-likes">0</span>
-            </div>
-            <div class="flex flex-col min-w-max snap-start">
-                <span class="text-[10px] text-slate-400 uppercase font-bold">Coment.</span>
-                <span class="text-lg md:text-xl font-bold" id="sel-comments">0</span>
-            </div>
-            <div class="flex flex-col min-w-max snap-start">
-                <span class="text-[10px] text-slate-400 uppercase font-bold">Compart.</span>
-                <span class="text-lg md:text-xl font-bold" id="sel-shares">0</span>
-            </div>
-            <div class="flex flex-col min-w-max snap-start">
-                <span class="text-[10px] text-slate-400 uppercase font-bold">Retweets</span>
-                <span class="text-lg md:text-xl font-bold text-sky-400" id="sel-retweets">0</span>
-            </div>
+        <div class="h-8 w-px bg-slate-800 hidden md:block"></div>
+        <div class="flex gap-6 flex-1 overflow-x-auto hide-scrollbar text-center">
+            <div><span class="text-[9px] text-slate-400 uppercase block font-bold">Interações</span><span class="text-sm font-bold" id="sel-int">0</span></div>
+            <div><span class="text-[9px] text-slate-400 uppercase block font-bold">Views</span><span class="text-sm font-bold" id="sel-views">0</span></div>
+            <div><span class="text-[9px] text-slate-400 uppercase block font-bold">Curtidas</span><span class="text-sm font-bold" id="sel-likes">0</span></div>
+            <div><span class="text-[9px] text-slate-400 uppercase block font-bold">Coment.</span><span class="text-sm font-bold" id="sel-comments">0</span></div>
+            <div><span class="text-[9px] text-slate-400 uppercase block font-bold">Compart.</span><span class="text-sm font-bold" id="sel-shares">0</span></div>
+            <div><span class="text-[9px] text-slate-400 uppercase block font-bold">Retweets</span><span class="text-sm font-bold text-sky-400" id="sel-retweets">0</span></div>
         </div>
-        
-        <button onclick="clearSelection()" class="p-2 hover:bg-slate-800 rounded-xl transition flex-shrink-0" title="Limpar seleção">
-            <i data-lucide="x" class="w-6 h-6 text-slate-400"></i>
-        </button>
+        <button onclick="clearSelection()" class="p-2 hover:bg-slate-800 rounded-xl transition"><i data-lucide="x" class="w-5 h-5 text-slate-400"></i></button>
     </div>
 
     <script>
-        // CONFIGURAÇÕES DO GITHUB
         const REPO_OWNER = 'henriqver';
         const REPO_NAME = 'dashboard-paulistao';
 
-        // ESTADO GLOBAL DO DASHBOARD
-        let uploadedData = {
-            instagram: [], facebook: [], tiktok: [], x: []
-        };
+        let uploadedData = { instagram: [], facebook: [], tiktok: [], x: [] };
+        
         let filteredRankedData = []; 
+        let petrobrasRankedData = [];
+
         let activePlatforms = ['instagram', 'facebook', 'tiktok', 'x']; 
+        let activePlatformsP = ['instagram', 'facebook', 'tiktok', 'x']; 
+
         let selectedPosts = new Set();
+        let comparisonMode = 'custom'; 
+        let timelineMode = 'last4'; 
+        let activeTab = 'dashboard';
         
         const hashtagsSet = new Set();
         const typesSet = new Set(['Imagem', 'Vídeo', 'Carrossel']);
         const accountsSet = new Set();
 
         let currentPage = 1;
+        let currentPageP = 1;
         const itemsPerPage = 10;
+        let chartsInstances = {};
 
-        // ESTILOS DINÂMICOS PARA O HIGHLIGHT DAS MÉTRICAS
         const metricStyles = {
-            totalInteracoes: { color: 'rose', bg: 'bg-rose-50', border: 'border-rose-100', textLg: 'text-rose-700', textSm: 'text-rose-600', icon: 'activity', defaultColor: 'text-rose-400' },
-            views: { color: 'slate', bg: 'bg-slate-100', border: 'border-slate-200', textLg: 'text-slate-700', textSm: 'text-slate-500', icon: 'eye', defaultColor: 'text-slate-400' },
-            likes: { color: 'rose', bg: 'bg-rose-50', border: 'border-rose-100', textLg: 'text-rose-700', textSm: 'text-rose-600', icon: 'heart', defaultColor: 'text-rose-400' },
-            comments: { color: 'emerald', bg: 'bg-emerald-50', border: 'border-emerald-100', textLg: 'text-emerald-700', textSm: 'text-emerald-600', icon: 'message-circle', defaultColor: 'text-emerald-400' },
-            shares: { color: 'blue', bg: 'bg-blue-50', border: 'border-blue-100', textLg: 'text-blue-700', textSm: 'text-blue-600', icon: 'share-2', defaultColor: 'text-blue-400' },
-            retweets: { color: 'sky', bg: 'bg-sky-50', border: 'border-sky-100', textLg: 'text-sky-700', textSm: 'text-sky-600', icon: 'repeat', defaultColor: 'text-sky-400' },
-            saves: { color: 'amber', bg: 'bg-amber-50', border: 'border-amber-100', textLg: 'text-amber-700', textSm: 'text-amber-600', icon: 'bookmark', defaultColor: 'text-amber-400' },
+            totalInteracoes: { bg: 'bg-rose-50', border: 'border-rose-100', textLg: 'text-rose-700', textSm: 'text-rose-600', icon: 'activity', defaultColor: 'text-rose-400' },
+            views: { bg: 'bg-slate-100', border: 'border-slate-200', textLg: 'text-slate-700', textSm: 'text-slate-500', icon: 'eye', defaultColor: 'text-slate-400' },
+            likes: { bg: 'bg-rose-50', border: 'border-rose-100', textLg: 'text-rose-700', textSm: 'text-rose-600', icon: 'heart', defaultColor: 'text-rose-400' },
+            comments: { bg: 'bg-emerald-50', border: 'border-emerald-100', textLg: 'text-emerald-700', textSm: 'text-emerald-600', icon: 'message-circle', defaultColor: 'text-emerald-400' },
+            shares: { bg: 'bg-blue-50', border: 'border-blue-100', textLg: 'text-blue-700', textSm: 'text-blue-600', icon: 'share-2', defaultColor: 'text-blue-400' },
+            retweets: { bg: 'bg-sky-50', border: 'border-sky-100', textLg: 'text-sky-700', textSm: 'text-sky-600', icon: 'repeat', defaultColor: 'text-sky-400' },
+            shares_retweets: { bg: 'bg-indigo-50', border: 'border-indigo-100', textLg: 'text-indigo-700', textSm: 'text-indigo-600', icon: 'share-2', defaultColor: 'text-indigo-400' },
+            saves: { bg: 'bg-amber-50', border: 'border-amber-100', textLg: 'text-amber-700', textSm: 'text-amber-600', icon: 'bookmark', defaultColor: 'text-amber-400' },
         };
 
-        // ==========================================
-        // SINCRONIZAÇÃO AUTOMÁTICA E MANUAL
-        // ==========================================
+        const petrobrasCatMap = {
+            'Paulistão F Petrobras': ['paulistao f petrobras', 'paulistaofpetrobras'],
+            'Copa Paulista F Petrobras': ['copa paulista f petrobras', 'copapaulistafpetrobras'],
+            'Taça Paulistana Petrobras': ['taca paulistana petrobras', 'tacapaulistanapetrobras'],
+            'Superclássico F Petrobras': ['superclassico f petrobras', 'superclassicofpetrobras'],
+            'Copinha F Petrobras': ['copinha f petrobras', 'copinhafpetrobras'],
+            'Paulista S-20 Petrobras': ['paulista s20 petrobras', 'paulista f s20 petrobras', 'paulista f sub20 petrobras', 'paulistafsub20petrobras', 'paulistafs20petrobras', 'paulistas20petrobras'],
+            'Paulista S-17 Petrobras': ['paulista s17 petrobras', 'paulista f s17 petrobras', 'paulista f sub17 petrobras', 'paulistafsub17petrobras', 'paulistafs17petrobras', 'paulistas17petrobras'],
+            'Paulista S-15 Petrobras': ['paulista s15 petrobras', 'paulista f s15 petrobras', 'paulista f sub15 petrobras', 'paulistafsub15petrobras', 'paulistafs15petrobras', 'paulistas15petrobras'],
+            'Paulista S-13 Petrobras': ['paulista s13 petrobras', 'paulista f s13 petrobras', 'paulista f sub13 petrobras', 'paulistafsub13petrobras', 'paulistafs13petrobras', 'paulistas13petrobras'],
+            'Festival Paulista Petrobras': ['festival f petrobras', 'festival paulista petrobras', 'festivalpaulistasub12petrobras', 'festivalpaulistasub14petrobras'],
+            'Torneio F Petrobras': ['torneio f petrobras', 'torneiofpetrobras']
+        };
+
+        function formatYAxisLabel(value) {
+            if (value >= 1000000) return (value / 1000000).toFixed(1).replace('.0', '') + 'M';
+            if (value >= 1000) return (value / 1000).toFixed(0) + 'K';
+            return value;
+        }
+
+        function formatRealCompact(value) {
+            if (value >= 1000000) return (value / 1000000).toFixed(1).replace('.0', '') + 'M';
+            if (value >= 10000) return (value / 1000).toFixed(0) + 'k';
+            if (value >= 1000) return (value / 1000).toFixed(1).replace('.', ',') + 'k';
+            return Math.round(value).toLocaleString('pt-BR');
+        }
+
+        function switchTab(tab) {
+            activeTab = tab;
+            const btnDash = document.getElementById('tab-btn-dashboard');
+            const btnAnal = document.getElementById('tab-btn-analytics');
+            const btnPetro = document.getElementById('tab-btn-petrobras');
+            const contentDash = document.getElementById('tab-content-dashboard');
+            const contentAnal = document.getElementById('tab-content-analytics');
+            const contentPetro = document.getElementById('tab-content-petrobras');
+
+            [btnDash, btnAnal, btnPetro].forEach(btn => btn.className = "p-2.5 rounded-xl transition flex items-center justify-center bg-transparent text-slate-600 hover:bg-slate-100");
+            [contentDash, contentAnal, contentPetro].forEach(c => c.classList.add('hidden'));
+
+            if (tab === 'dashboard') {
+                btnDash.className = "p-2.5 rounded-xl transition flex items-center justify-center bg-indigo-600 text-white shadow-sm";
+                contentDash.classList.remove('hidden');
+            } else if (tab === 'petrobras') {
+                btnPetro.className = "p-2.5 rounded-xl transition flex items-center justify-center bg-indigo-600 text-white shadow-sm";
+                contentPetro.classList.remove('hidden');
+            } else {
+                btnAnal.className = "p-2.5 rounded-xl transition flex items-center justify-center bg-indigo-600 text-white shadow-sm";
+                contentAnal.classList.remove('hidden');
+                populateMonthSelectors();
+                renderAnalyticsCharts();
+            }
+            updateSelectionBar();
+        }
+
         async function carregarDadosDoGithub() {
             const pastas = ['instagram', 'facebook', 'tiktok', 'twitter'];
             const statusDiv = document.getElementById('sync-status');
             const detalhesP = document.getElementById('sync-details');
-            
             let totalArquivosLidos = 0;
 
             for (const pasta of pastas) {
                 try {
                     const chavePlataforma = pasta === 'twitter' ? 'x' : pasta;
-                    detalhesP.innerText = `Lendo pasta /dados/${pasta}...`;
-                    
+                    detalhesP.innerText = `Lendo /dados/${pasta}...`;
                     const resposta = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/dados/${pasta}`);
-                    
-                    if (!resposta.ok) {
-                        console.warn(`Pasta dados/${pasta} não encontrada ou vazia no repositório.`);
-                        continue;
-                    }
+                    if (!resposta.ok) continue;
                     
                     const arquivos = await resposta.json();
-                    const arquivosCSV = arquivos.filter(arquivo => arquivo.name.toLowerCase().endsWith('.csv'));
-
-                    for (const arquivo of arquivosCSV) {
-                        detalhesP.innerText = `Extraindo ${arquivo.name}...`;
+                    for (const arquivo of arquivos.filter(a => a.name.toLowerCase().endsWith('.csv'))) {
+                        detalhesP.innerText = `Lendo ${arquivo.name}...`;
                         await baixarEProcessarCSV(arquivo.download_url, chavePlataforma, arquivo.name);
                         totalArquivosLidos++;
                     }
-                } catch (erro) {
-                    console.error(`Erro ao carregar dados da pasta ${pasta}:`, erro);
-                }
+                } catch (e) { console.error(e); }
             }
 
-            statusDiv.className = "flex items-center justify-end gap-2 text-sm font-medium text-emerald-600 bg-emerald-50 px-4 py-2.5 rounded-xl border border-emerald-200 transition-colors";
-            statusDiv.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4"></i> Dados Sincronizados`;
-            detalhesP.innerText = `${totalArquivosLidos} arquivos CSV carregados com sucesso.`;
+            statusDiv.className = "flex items-center gap-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200";
+            statusDiv.innerHTML = `<i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Sincronizado`;
+            detalhesP.innerText = `${totalArquivosLidos} relatórios carregados.`;
             lucide.createIcons();
-
-            updateFiltersUI();
+            updateFiltersUI(); 
             applyFiltersAndGroup();
+            applyPetrobrasFilters();
         }
-        
+
         function handleManualUpload(event) {
             const files = event.target.files;
             if (files.length === 0) return;
-            
             const statusDiv = document.getElementById('sync-status');
             const detalhesP = document.getElementById('sync-details');
             
-            statusDiv.className = "flex items-center justify-end gap-2 text-sm font-medium text-indigo-600 bg-indigo-50 px-4 py-2.5 rounded-xl border border-indigo-200 transition-colors";
-            statusDiv.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Lendo arquivos locais...`;
+            statusDiv.className = "flex items-center gap-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-200";
+            statusDiv.innerHTML = `<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i> Lendo local...`;
             lucide.createIcons();
             
             let processed = 0;
-            
             Array.from(files).forEach(file => {
-                const nomeArquivo = file.name.toLowerCase();
-                let plataforma = 'instagram';
-                if (nomeArquivo.includes('facebook')) plataforma = 'facebook';
-                else if (nomeArquivo.includes('tiktok')) plataforma = 'tiktok';
-                else if (nomeArquivo.includes('twitter') || nomeArquivo.includes(' x ')) plataforma = 'x';
-                
-                let contaPadrao = 'Paulistão';
-                if (nomeArquivo.includes('copinha')) contaPadrao = 'Copinha';
-                else if (nomeArquivo.includes('feminino') || nomeArquivo.includes(' f ')) contaPadrao = 'Paulistão F';
-                else if (nomeArquivo.includes('fpf')) contaPadrao = 'FPF';
+                const nome = file.name.toLowerCase();
+                let plataforma = nome.includes('facebook') ? 'facebook' : (nome.includes('tiktok') ? 'tiktok' : (nome.includes('twitter') || nome.includes(' x ') ? 'x' : 'instagram'));
+                let contaPadrao = nome.includes('copinha') ? 'Copinha' : (nome.includes('feminino') || nome.includes(' f ') ? 'Paulistão F' : (nome.includes('fpf') ? 'FPF' : 'Paulistão'));
 
                 Papa.parse(file, {
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: function(resultados) {
-                        let novosPosts = [];
-                        if (plataforma === 'facebook' || plataforma === 'instagram') {
-                            novosPosts = processMetaCSV(resultados, plataforma, contaPadrao);
-                        } else {
-                            novosPosts = processTikTokTwitterCSV(resultados, plataforma, contaPadrao);
-                        }
-
-                        uploadedData[plataforma] = [...uploadedData[plataforma], ...novosPosts];
+                    header: true, skipEmptyLines: true,
+                    complete: function(res) {
+                        let posts = (plataforma === 'facebook' || plataforma === 'instagram') ? processMetaCSV(res, plataforma, contaPadrao) : processTikTokTwitterCSV(res, plataforma, contaPadrao);
+                        uploadedData[plataforma] = [...uploadedData[plataforma], ...posts];
                         processed++;
-                        
                         if (processed === files.length) {
-                            updateFiltersUI();
+                            updateFiltersUI(); 
                             applyFiltersAndGroup();
-                            
-                            statusDiv.className = "flex items-center justify-end gap-2 text-sm font-medium text-emerald-600 bg-emerald-50 px-4 py-2.5 rounded-xl border border-emerald-200 transition-colors";
-                            statusDiv.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4"></i> Upload Concluído`;
-                            detalhesP.innerText = `${processed} arquivos locais adicionados.`;
+                            applyPetrobrasFilters();
+                            statusDiv.className = "flex items-center gap-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200";
+                            statusDiv.innerHTML = `<i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Upload OK`;
+                            detalhesP.innerText = `${processed} arquivos adicionados.`;
                             lucide.createIcons();
                         }
                     }
@@ -392,29 +667,12 @@
         function baixarEProcessarCSV(url, plataforma, nomeArquivo) {
             return new Promise((resolve) => {
                 Papa.parse(url, {
-                    download: true,
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: function(resultados) {
-                        let contaPadrao = 'Paulistão';
-                        const nomeMenor = nomeArquivo.toLowerCase();
-                        if (nomeMenor.includes('copinha')) contaPadrao = 'Copinha';
-                        else if (nomeMenor.includes('feminino') || nomeMenor.includes(' f ')) contaPadrao = 'Paulistão F';
-                        else if (nomeMenor.includes('fpf')) contaPadrao = 'FPF';
-
-                        let novosPosts = [];
-                        if (plataforma === 'facebook' || plataforma === 'instagram') {
-                            novosPosts = processMetaCSV(resultados, plataforma, contaPadrao);
-                        } else {
-                            novosPosts = processTikTokTwitterCSV(resultados, plataforma, contaPadrao);
-                        }
-
-                        uploadedData[plataforma] = [...uploadedData[plataforma], ...novosPosts];
+                    download: true, header: true, skipEmptyLines: true,
+                    complete: function(res) {
+                        let contaPadrao = nomeArquivo.toLowerCase().includes('copinha') ? 'Copinha' : (nomeArquivo.toLowerCase().includes('feminino') || nomeArquivo.toLowerCase().includes(' f ') ? 'Paulistão F' : (nomeArquivo.toLowerCase().includes('fpf') ? 'FPF' : 'Paulistão'));
+                        let posts = (plataforma === 'facebook' || plataforma === 'instagram') ? processMetaCSV(res, plataforma, contaPadrao) : processTikTokTwitterCSV(res, plataforma, contaPadrao);
+                        uploadedData[plataforma] = [...uploadedData[plataforma], ...posts];
                         resolve();
-                    },
-                    error: function(erro) {
-                        console.error(`Erro no PapaParse ao ler ${nomeArquivo}:`, erro);
-                        resolve(); 
                     }
                 });
             });
@@ -422,316 +680,179 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             const today = new Date();
-            const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+            const start = new Date(); start.setDate(today.getDate() - 30);
             
-            const start = new Date();
-            start.setDate(today.getDate() - 30);
-            const startStr = start.getFullYear() + '-' + String(start.getMonth() + 1).padStart(2, '0') + '-' + String(start.getDate()).padStart(2, '0');
+            document.getElementById('date-end').value = today.toISOString().split('T')[0];
+            document.getElementById('date-start').value = start.toISOString().split('T')[0];
 
-            document.getElementById('date-end').value = todayStr;
-            document.getElementById('date-start').value = startStr;
-            
+            document.getElementById('p-date-end').value = today.toISOString().split('T')[0];
+            document.getElementById('p-date-start').value = start.toISOString().split('T')[0];
+
             carregarDadosDoGithub();
-            lucide.createIcons();
         });
 
-        // ==========================================
-        // FILTROS E CONTROLES
-        // ==========================================
-        function setQuickDate(days) {
-            const end = new Date();
-            const start = new Date();
-            start.setDate(end.getDate() - days);
-            
-            const endStr = end.getFullYear() + '-' + String(end.getMonth() + 1).padStart(2, '0') + '-' + String(end.getDate()).padStart(2, '0');
-            const startStr = start.getFullYear() + '-' + String(start.getMonth() + 1).padStart(2, '0') + '-' + String(start.getDate()).padStart(2, '0');
-            
-            document.getElementById('date-end').value = endStr;
-            document.getElementById('date-start').value = startStr;
-            
-            applyFiltersAndGroup();
+        function setQuickDate(days, panel) {
+            const end = new Date(); const start = new Date(); start.setDate(end.getDate() - days);
+            if (panel === 'dashboard') {
+                document.getElementById('date-end').value = end.toISOString().split('T')[0];
+                document.getElementById('date-start').value = start.toISOString().split('T')[0];
+                applyFiltersAndGroup();
+            } else {
+                document.getElementById('p-date-end').value = end.toISOString().split('T')[0];
+                document.getElementById('p-date-start').value = start.toISOString().split('T')[0];
+                applyPetrobrasFilters();
+            }
         }
 
-        function togglePlatform(p) {
-            if (activePlatforms.includes(p)) activePlatforms = activePlatforms.filter(x => x !== p);
-            else activePlatforms.push(p);
+        function togglePlatform(p, panel) {
+            let active = panel === 'dashboard' ? activePlatforms : activePlatformsP;
+            if (active.includes(p)) {
+                let idx = active.indexOf(p);
+                active.splice(idx, 1);
+            } else {
+                active.push(p);
+            }
             
             ['instagram', 'facebook', 'tiktok', 'x'].forEach(plat => {
-                const btn = document.getElementById(`btn-plat-${plat}`);
-                if (activePlatforms.includes(plat)) {
-                    btn.classList.replace('bg-slate-100', 'bg-indigo-600');
-                    btn.classList.replace('text-slate-600', 'text-white');
+                const btn = document.getElementById(panel === 'dashboard' ? `btn-plat-${plat}` : `btn-plat-${plat}-p`);
+                if (active.includes(plat)) {
+                    btn.className = "px-3.5 py-1.5 rounded-xl border bg-indigo-600 text-white font-semibold text-xs transition shadow-sm";
                 } else {
-                    btn.classList.replace('bg-indigo-600', 'bg-slate-100');
-                    btn.classList.replace('text-white', 'text-slate-600');
+                    btn.className = "px-3.5 py-1.5 rounded-xl border bg-slate-100 text-slate-600 font-semibold text-xs transition shadow-sm";
                 }
             });
-            applyFiltersAndGroup();
+
+            if (panel === 'dashboard') applyFiltersAndGroup();
+            else applyPetrobrasFilters();
         }
 
         function getPlatformSVG(platform, extraClasses = "w-4 h-4") {
             const base = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="${extraClasses}">`;
-            if (platform === 'instagram') {
-                return base + `<rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line></svg>`;
-            }
-            if (platform === 'facebook') {
-                return base + `<path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>`;
-            }
-            if (platform === 'x') {
-                return base + `<path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path></svg>`;
-            }
-            if (platform === 'tiktok') {
-                return base + `<path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>`;
-            }
+            if (platform === 'instagram') return base + `<rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line></svg>`;
+            if (platform === 'facebook') return base + `<path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>`;
+            if (platform === 'x') return base + `<path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path></svg>`;
+            if (platform === 'tiktok') return base + `<path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>`;
             return base + `<circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"></path></svg>`;
         }
 
         function standardizeAccountName(acc) {
             if (!acc) return 'paulistao';
             let n = acc.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-            
-            if (n.includes('paulistao f') || n === 'paulistaof' || n.includes('feminino')) {
-                return 'paulistao_f';
-            }
-            if (n.includes('copinha') || n.includes('copa sao paulo')) {
-                return 'copinha';
-            }
-            if (n === 'fpf' || n === 'fpf_oficial' || n.includes('federacao paulista') || n.includes('federação paulista')) {
-                return 'fpf_oficial';
-            }
-            if (n.includes('futebol paulista') || n === 'futebolpaulista' || n === 'paulistao') {
-                return 'paulistao';
-            }
-            
+            if (n.includes('paulistao f') || n === 'paulistaof' || n.includes('feminino')) return 'paulistao_f';
+            if (n.includes('copinha') || n.includes('copa sao paulo')) return 'copinha';
+            if (n === 'fpf' || n === 'fpf_oficial' || n.includes('federacao paulista')) return 'fpf_oficial';
+            if (n.includes('futebol paulista') || n === 'futebolpaulista' || n === 'paulistao') return 'paulistao';
             return acc.toLowerCase();
         }
 
         function cleanTextContent(text) {
             if (!text) return '';
-            return text.toLowerCase()
-                .replace(/https?:\/\/\S+/g, '')       
-                .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
-                .replace(/[\r\n]+/g, ' ')             
-                .replace(/[^\w\s]/gi, '')             
-                .replace(/\s+/g, ' ')                 
-                .trim();
+            return text.toLowerCase().replace(/https?:\/\/\S+/g, '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[\r\n]+/g, ' ').replace(/[^\w\s]/gi, '').replace(/\s+/g, ' ').trim();
         }
 
         function extractAccountFromUrl(url) {
             if (!url) return null;
             try {
-                let u = url.trim();
-                if(!u.startsWith('http')) u = 'https://' + u;
-                const urlObj = new URL(u);
-                const host = urlObj.hostname.toLowerCase();
-                const path = urlObj.pathname.toLowerCase();
-                
-                if (host.includes('tiktok.com')) {
-                    const m = path.match(/\/@([^\/]+)/);
-                    if (m) return m[1];
-                } else if (host.includes('twitter.com') || host.includes('x.com')) {
-                    const m = path.match(/^\/([^\/]+)\/status/);
-                    if (m) return m[1];
-                } else if (host.includes('instagram.com')) {
-                    const m = path.match(/^\/([^\/]+)\/(?:p|reel|reels)\//);
-                    if (m && !['p','reel','reels'].includes(m[1])) return m[1];
-                } else if (host.includes('facebook.com')) {
-                    const m = path.match(/^\/([^\/]+)\/(?:videos|posts|reels)\//);
-                    if (m && !['watch','groups','profile.php','story.php'].includes(m[1])) return m[1];
-                }
-            } catch(e) {}
-            return null;
+                let u = url.trim(); if(!u.startsWith('http')) u = 'https://' + u;
+                const urlObj = new URL(u); const host = urlObj.hostname.toLowerCase(); const path = urlObj.pathname.toLowerCase();
+                if (host.includes('tiktok.com')) { const m = path.match(/\/@([^\/]+)/); if (m) return m[1]; } 
+                else if (host.includes('twitter.com') || host.includes('x.com')) { const m = path.match(/^\/([^\/]+)\/status/); if (m) return m[1]; } 
+                else if (host.includes('instagram.com')) { const m = path.match(/^\/([^\/]+)\/(?:p|reel|reels)\//); if (m && !['p','reel','reels'].includes(m[1])) return m[1]; } 
+                else if (host.includes('facebook.com')) { const m = path.match(/^\/([^\/]+)\/(?:videos|posts|reels)\//); if (m && !['watch','groups','profile.php','story.php'].includes(m[1])) return m[1]; }
+            } catch(e) {} return null;
         }
 
         function safeParseInt(val) {
             if (!val || val === '-' || val === 'N/A' || String(val).includes('erro')) return 0;
-            let str = String(val).toUpperCase().trim();
-            let mult = 1;
-            if(str.endsWith('K')) mult = 1000;
-            if(str.endsWith('M')) mult = 1000000;
+            let str = String(val).toUpperCase().trim(); let mult = 1;
+            if(str.endsWith('K')) mult = 1000; if(str.endsWith('M')) mult = 1000000;
             let num = parseFloat(str.replace(/[^0-9\.\,]/g, '').replace(',', '.'));
             return isNaN(num) ? 0 : Math.round(num * mult);
         }
 
-        // ==========================================
-        // LÓGICA DE SELEÇÃO MÚLTIPLA
-        // ==========================================
-        function toggleSelectPost(id) {
-            if (selectedPosts.has(id)) {
-                selectedPosts.delete(id);
-            } else {
-                selectedPosts.add(id);
-            }
-            updateSelectionBar();
-        }
-
-        function clearSelection() {
-            selectedPosts.clear();
-            document.querySelectorAll('.post-checkbox').forEach(cb => cb.checked = false);
-            updateSelectionBar();
-        }
-
-        function updateSelectionBar() {
-            const bar = document.getElementById('selection-bar');
-            if (selectedPosts.size === 0) {
-                bar.classList.add('hidden');
-                bar.classList.remove('flex');
-                return;
-            }
-            
-            bar.classList.remove('hidden');
-            bar.classList.add('flex');
-            
-            let sViews = 0, sInt = 0, sLikes = 0, sComm = 0, sShare = 0, sRetweets = 0, sSaves = 0;
-            
-            filteredRankedData.forEach(item => {
-                if (selectedPosts.has(item.id)) {
-                    sViews += item.views;
-                    sInt += item.totalInteracoes;
-                    sLikes += item.likes;
-                    sComm += item.comments;
-                    sShare += item.shares;
-                    sRetweets += item.retweets;
-                    sSaves += item.saves;
-                }
-            });
-            
-            document.getElementById('sel-count').innerText = selectedPosts.size;
-            document.getElementById('sel-views').innerText = sViews.toLocaleString('pt-BR');
-            document.getElementById('sel-int').innerText = sInt.toLocaleString('pt-BR');
-            document.getElementById('sel-likes').innerText = sLikes.toLocaleString('pt-BR');
-            document.getElementById('sel-comments').innerText = sComm.toLocaleString('pt-BR');
-            document.getElementById('sel-shares').innerText = sShare.toLocaleString('pt-BR');
-            document.getElementById('sel-retweets').innerText = sRetweets.toLocaleString('pt-BR');
-        }
-
-        // ==========================================
-        // PARSERS ESPECIALIZADOS
-        // ==========================================
-
         function processMetaCSV(results, platform, fallbackAccount) {
-            const data = results.data;
-            const parsedList = [];
-            
+            const data = results.data; const parsedList = [];
             data.forEach(row => {
                 if (!row['Horário de publicação']) return;
                 if (row['Data'] !== 'Total' && row['Data'] !== '-' && row['Data'] !== 'Total ') return;
-                if (String(row['Comentário de dados']).includes('erro')) return; 
-
-                let rawAcc = row['Nome de usuário da conta'] || row['Nome da Página'] || fallbackAccount;
                 let url = row['Link permanente'] || '';
                 let rawDesc = row['Descrição'] || row['Título'] || '';
-                
-                let urlAcc = extractAccountFromUrl(url);
-                let primaryAccount = urlAcc ? standardizeAccountName(urlAcc) : null;
-                let account = primaryAccount || standardizeAccountName(rawAcc);
+                let primaryAccount = extractAccountFromUrl(url) ? standardizeAccountName(extractAccountFromUrl(url)) : null;
+                let account = primaryAccount || standardizeAccountName(row['Nome de usuário da conta'] || row['Nome da Página'] || fallbackAccount);
                 let originFolder = standardizeAccountName(fallbackAccount);
 
                 let dateStrRaw = row['Horário de publicação'].split(' ')[0];
                 let dateObj = new Date(dateStrRaw);
                 if (isNaN(dateObj.getTime())) {
                     let brMatch = dateStrRaw.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-                    if (brMatch) {
-                        dateObj = new Date(`${brMatch[3]}-${brMatch[2]}-${brMatch[1]}T12:00:00`);
-                    }
+                    if (brMatch) dateObj = new Date(`${brMatch[3]}-${brMatch[2]}-${brMatch[1]}T12:00:00`);
                 }
                 if (isNaN(dateObj.getTime())) dateObj = new Date(0);
                 
                 let rawType = String(row['Tipo de post'] || '').toLowerCase();
-                let type = 'Imagem';
-                if (rawType.includes('vídeo') || rawType.includes('reel')) type = 'Vídeo';
-                else if (rawType.includes('carrossel')) type = 'Carrossel';
+                let type = rawType.includes('vídeo') || rawType.includes('reel') ? 'Vídeo' : (rawType.includes('carrossel') ? 'Carrossel' : 'Imagem');
 
-                let views = safeParseInt(row['Visualizações']);
-                let likes = safeParseInt(row['Curtidas'] || row['Reações']);
-                let comments = safeParseInt(row['Comentários']);
-                let shares = safeParseInt(row['Compartilhamentos']);
-                let saves = safeParseInt(row['Salvamentos']);
-                let retweets = 0; 
-
+                let views = safeParseInt(row['Visualizações']); let likes = safeParseInt(row['Curtidas'] || row['Reações']);
+                let comments = safeParseInt(row['Comentários']); let shares = safeParseInt(row['Compartilhamentos']);
+                let saves = safeParseInt(row['Salvamentos']); let retweets = 0; 
                 let totalInteracoes = likes + comments + shares + saves + retweets;
-
                 let desc = rawDesc ? rawDesc : 'Post sem texto';
 
-                const tags = desc.match(/#[\wÀ-ÿ]+/g);
-                if(tags) tags.forEach(t => hashtagsSet.add(t));
+                const tags = desc.match(/#[\wÀ-ÿ]+/g); if(tags) tags.forEach(t => hashtagsSet.add(t));
                 accountsSet.add(account);
 
-                parsedList.push({
-                    platform, account, primaryAccount, originFolder, desc, url, type,
-                    views, likes, comments, shares, retweets, saves, totalInteracoes,
-                    date: dateObj
-                });
+                parsedList.push({ platform, account, primaryAccount, originFolder, desc, url, type, views, likes, comments, shares, retweets, saves, totalInteracoes, date: dateObj });
             });
             return parsedList;
         }
 
         function processTikTokTwitterCSV(results, platform, fallbackAccount) {
-            const data = results.data;
-            const parsedList = [];
-            
+            const data = results.data; const parsedList = [];
             data.forEach(row => {
                 let url = row['Link'] || row['Video Link'] || row['Tweet permalink'] || row['Postar link'] || row['Link para o vídeo'] || row['Link do Tweet'] || row['URL'] || '';
                 let rawDesc = row['Video Title'] || row['Tweet text'] || row['Texto'] || row['Texto do post'] || row['Título do vídeo'] || row['Texto do Tweet'] || '';
                 let dateStr = row['Create Time'] || row['time'] || row['Data'] || row['Hora da publicação'] || row['Hora'] || '';
                 
                 if(!url) return; 
-
                 let desc = rawDesc ? rawDesc.replace(/https?:\/\/t\.co\/\S+/g, '').trim() : 'Post sem texto';
                 if (desc === '') desc = 'Post sem texto';
 
-                let urlAcc = extractAccountFromUrl(url);
-                let primaryAccount = urlAcc ? standardizeAccountName(urlAcc) : null;
+                let primaryAccount = extractAccountFromUrl(url) ? standardizeAccountName(extractAccountFromUrl(url)) : null;
                 let account = primaryAccount || standardizeAccountName(fallbackAccount);
                 let originFolder = standardizeAccountName(fallbackAccount);
                 
                 let dateObj = new Date(0);
                 if (dateStr) {
                     let parsedDate = Date.parse(dateStr);
-                    if (!isNaN(parsedDate)) {
-                        dateObj = new Date(parsedDate);
-                    } else {
+                    if (!isNaN(parsedDate)) dateObj = new Date(parsedDate);
+                    else {
                         let brMatch = dateStr.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-                        if (brMatch) {
-                            dateObj = new Date(`${brMatch[3]}-${brMatch[2]}-${brMatch[1]}T12:00:00`);
-                        } else {
-                            dateObj = new Date(dateStr.replace(/-/g, '/'));
-                        }
+                        if (brMatch) dateObj = new Date(`${brMatch[3]}-${brMatch[2]}-${brMatch[1]}T12:00:00`);
+                        else dateObj = new Date(dateStr.replace(/-/g, '/'));
                     }
                 }
                 if (isNaN(dateObj.getTime())) dateObj = new Date(0);
 
                 let type = platform === 'tiktok' ? 'Vídeo' : 'Imagem';
-
                 let views = safeParseInt(row['Views'] || row['impressions'] || row['Visualizações de vídeo'] || row['Visualizações do vídeo'] || row['Impressões']);
                 let likes = safeParseInt(row['Likes'] || row['curtidas'] || row['Curtidas']);
                 let comments = safeParseInt(row['Comments'] || row['replies'] || row['respostas'] || row['Comentários'] || row['Respostas']);
-                
                 let shares = safeParseInt(row['Shares'] || row['compartilhamentos'] || row['Compartilhamentos']);
                 let retweets = safeParseInt(row['retweets'] || row['Retweets'] || row['Reposts']);
-                
                 let saves = safeParseInt(row['Saves'] || row['Itens salvos'] || row['Adicionar aos Favoritos'] || row['Favoritos'] || 0);
 
                 let totalInteracoes = likes + comments + shares + retweets + saves;
-                
                 accountsSet.add(account);
 
-                parsedList.push({
-                    platform, account, primaryAccount, originFolder, desc, url, type,
-                    views, likes, comments, shares, retweets, saves, totalInteracoes,
-                    date: dateObj
-                });
+                parsedList.push({ platform, account, primaryAccount, originFolder, desc, url, type, views, likes, comments, shares, retweets, saves, totalInteracoes, date: dateObj });
             });
             return parsedList;
         }
 
         function updateFiltersUI() {
             document.getElementById('hashtag-suggestions').innerHTML = Array.from(hashtagsSet).map(tag => `<option value="${tag}">`).join('');
-            
-            const formatFilter = document.getElementById('formatFilter');
-            formatFilter.innerHTML = '<option value="Todos">Tipos de Post</option>' + Array.from(typesSet).map(t => `<option value="${t}">${t}</option>`).join('');
+            document.getElementById('formatFilter').innerHTML = '<option value="Todos">Formatos</option>' + Array.from(typesSet).map(t => `<option value="${t}">${t}</option>`).join('');
 
-            const accountFilter = document.getElementById('accountFilter');
             let accHtml = `
                 <option value="Todas">Todas as Contas</option>
                 <option disabled>──────────</option>
@@ -746,105 +867,44 @@
                 <option value="fpf_plus">FPF+</option>
                 <option disabled>──────────</option>
             `;
-            
-            const mainAccounts = ['paulistao', 'paulistao_f', 'copinha', 'fpf_oficial'];
-            
-            Array.from(accountsSet).filter(a => !mainAccounts.includes(a) && a.length < 30).sort().forEach(a => {
-                accHtml += `<option value="${a}">@${a}</option>`;
-            });
-            
-            accountFilter.innerHTML = accHtml;
+            Array.from(accountsSet).filter(a => !['paulistao', 'paulistao_f', 'copinha', 'fpf_oficial'].includes(a) && a.length < 30).sort().forEach(a => { accHtml += `<option value="${a}">@${a}</option>`; });
+            document.getElementById('accountFilter').innerHTML = accHtml;
         }
 
         function generateIntelligentGroupKey(text, dateObj) {
             let cleanText = cleanTextContent(text).replace(/\s+/g, '').substring(0, 50) || 'semtexto';
-            let dateStr = '';
-            if (dateObj && !isNaN(dateObj.getTime())) {
-                dateStr = dateObj.getFullYear() + '-' + dateObj.getMonth() + '-' + dateObj.getDate();
-            }
+            let dateStr = (dateObj && !isNaN(dateObj.getTime())) ? dateObj.getFullYear() + '-' + dateObj.getMonth() + '-' + dateObj.getDate() : '';
             return cleanText + '_' + dateStr;
         }
 
-        // ==========================================
-        // AGRUPAMENTO E RENDERIZAÇÃO
-        // ==========================================
-
         function applyFiltersAndGroup() {
-            const groups = {};
-            const allPosts = [];
-            activePlatforms.forEach(plat => {
-                allPosts.push(...uploadedData[plat]);
-            });
+            const groups = {}; const allPosts = [];
+            activePlatforms.forEach(plat => { allPosts.push(...uploadedData[plat]); });
 
             allPosts.forEach(item => {
                 let baseKey = generateIntelligentGroupKey(item.desc, item.date);
-                let key = baseKey;
-                
-                let counter = 1;
-                while (groups[key] && groups[key].platforms.has(item.platform)) {
-                    key = baseKey + '_' + counter;
-                    counter++;
-                }
+                let key = baseKey; let counter = 1;
+                while (groups[key] && groups[key].platforms.has(item.platform)) { key = baseKey + '_' + counter; counter++; }
                 
                 if (!groups[key]) {
-                    groups[key] = {
-                        id: key,
-                        desc: item.desc,
-                        platforms: new Set(),
-                        accounts: new Set(),
-                        primaryAccounts: new Set(), 
-                        origins: new Set(), 
-                        types: new Set(),
-                        links: {},
-                        views: 0, likes: 0, comments: 0, shares: 0, retweets: 0, saves: 0, totalInteracoes: 0,
-                        date: item.date ? item.date.getTime() : 0
-                    };
+                    groups[key] = { id: key, desc: item.desc, platforms: new Set(), accounts: new Set(), primaryAccounts: new Set(), origins: new Set(), types: new Set(), links: {}, views: 0, likes: 0, comments: 0, shares: 0, retweets: 0, saves: 0, totalInteracoes: 0, date: item.date ? item.date.getTime() : 0 };
                 }
 
-                groups[key].platforms.add(item.platform);
-                groups[key].accounts.add(item.account);
-                groups[key].origins.add(item.originFolder);
+                groups[key].platforms.add(item.platform); groups[key].accounts.add(item.account); groups[key].origins.add(item.originFolder);
                 if (item.primaryAccount) groups[key].primaryAccounts.add(item.primaryAccount);
-                groups[key].types.add(item.type);
-                groups[key].links[item.platform] = item.url;
-                groups[key].views += item.views;
-                groups[key].likes += item.likes;
-                groups[key].comments += item.comments;
-                groups[key].shares += item.shares;
-                groups[key].retweets += item.retweets;
-                groups[key].saves += item.saves;
-                groups[key].totalInteracoes += item.totalInteracoes;
-                
-                if (item.date && item.date.getTime() > groups[key].date) {
-                    groups[key].date = item.date.getTime();
-                }
+                groups[key].types.add(item.type); groups[key].links[item.platform] = item.url;
+                groups[key].views += item.views; groups[key].likes += item.likes; groups[key].comments += item.comments; groups[key].shares += item.shares; groups[key].retweets += item.retweets; groups[key].saves += item.saves; groups[key].totalInteracoes += item.totalInteracoes;
+                if (item.date && item.date.getTime() > groups[key].date) groups[key].date = item.date.getTime();
             });
 
-            const searchInputRaw = document.getElementById('searchInput').value;
-            const search = cleanTextContent(searchInputRaw).replace(/\s+/g, '');
-            
-            const sortBy = document.getElementById('sortOrder').value;
-            const formatSel = document.getElementById('formatFilter').value;
-            const accountSel = document.getElementById('accountFilter').value;
-            
-            const startStr = document.getElementById('date-start').value;
-            const endStr = document.getElementById('date-end').value;
-            
-            const startDate = startStr ? new Date(startStr + 'T00:00:00').getTime() : 0;
-            const endDate = endStr ? new Date(endStr + 'T23:59:59').getTime() : new Date().getTime();
+            const search = cleanTextContent(document.getElementById('searchInput').value).replace(/\s+/g, '');
+            const sortBy = document.getElementById('sortOrder').value; const formatSel = document.getElementById('formatFilter').value; const accountSel = document.getElementById('accountFilter').value;
+            const startStr = document.getElementById('date-start').value; const endStr = document.getElementById('date-end').value;
+            const startDate = startStr ? new Date(startStr + 'T00:00:00').getTime() : 0; const endDate = endStr ? new Date(endStr + 'T23:59:59').getTime() : new Date().getTime();
 
             const finalData = [];
-
             Object.values(groups).forEach(g => {
-                let finalType = 'Imagem';
-                if (g.types.has('Vídeo')) {
-                    finalType = 'Vídeo';
-                } else if (g.types.has('Carrossel')) {
-                    finalType = 'Carrossel';
-                }
-                
-                g.types = new Set([finalType]);
-
+                let finalType = g.types.has('Vídeo') ? 'Vídeo' : (g.types.has('Carrossel') ? 'Carrossel' : 'Imagem'); g.types = new Set([finalType]);
                 const cleanGroupDesc = cleanTextContent(g.desc).replace(/\s+/g, '');
 
                 if (g.date < startDate || g.date > endDate) return;
@@ -853,61 +913,101 @@
                 
                 if (accountSel !== 'Todas') {
                     if (accountSel.endsWith('_plus')) {
-                        const baseAcc = accountSel.replace('_plus', '');
-                        let mentioned = false;
-                        
+                        const baseAcc = accountSel.replace('_plus', ''); let mentioned = false;
                         if (baseAcc === 'paulistao' && (cleanGroupDesc.includes('paulistao') || cleanGroupDesc.includes('@paulistao'))) mentioned = true;
-                        if (baseAcc === 'paulistao_f' && (cleanGroupDesc.includes('paulistaof') || cleanGroupDesc.includes('feminino') || cleanGroupDesc.includes('paulistao f'))) mentioned = true;
-                        if (baseAcc === 'copinha' && (cleanGroupDesc.includes('copinha') || cleanGroupDesc.includes('copa sao paulo'))) mentioned = true;
-                        if (baseAcc === 'fpf' && (cleanGroupDesc.includes('fpf') || cleanGroupDesc.includes('federacao paulista'))) mentioned = true;
-                        
+                        if (baseAcc === 'paulistao_f' && (cleanGroupDesc.includes('paulistaof') || cleanGroupDesc.includes('feminino'))) mentioned = true;
+                        if (baseAcc === 'copinha' && cleanGroupDesc.includes('copinha')) mentioned = true;
+                        if (baseAcc === 'fpf' && cleanGroupDesc.includes('fpf')) mentioned = true;
                         let accountToCheck = baseAcc === 'fpf' ? 'fpf_oficial' : baseAcc;
-
                         if (!g.primaryAccounts.has(accountToCheck) && !g.origins.has(accountToCheck) && !mentioned) return;
                     } else {
-                        let accountToCheck = accountSel === 'fpf' ? 'fpf_oficial' : accountSel;
-                        let isOriginal = false;
-                        
-                        if (g.primaryAccounts.size > 0) {
-                            if (g.primaryAccounts.has(accountToCheck)) isOriginal = true;
-                        } else {
-                            if (g.accounts.has(accountToCheck)) isOriginal = true;
-                        }
-                        
+                        let accountToCheck = accountSel === 'fpf' ? 'fpf_oficial' : accountSel; let isOriginal = false;
+                        if (g.primaryAccounts.size > 0) { if (g.primaryAccounts.has(accountToCheck)) isOriginal = true; } 
+                        else { if (g.accounts.has(accountToCheck)) isOriginal = true; }
                         if (!isOriginal) return;
                     }
                 }
-
                 finalData.push(g);
             });
 
             filteredRankedData = finalData.sort((a, b) => b[sortBy] - a[sortBy]);
+            const totalPages = Math.ceil(filteredRankedData.length / itemsPerPage) || 1; if (currentPage > totalPages) currentPage = 1;
             
-            const totalPages = Math.ceil(filteredRankedData.length / itemsPerPage) || 1;
-            if (currentPage > totalPages) currentPage = 1;
+            updateKPIs(); 
+            renderPaginatedRanking(); 
+            renderWorstRanking(); 
+            updateSelectionBar();
+        }
 
-            updateKPIs();
-            renderPaginatedRanking();
-            renderWorstRanking();
+        function applyPetrobrasFilters() {
+            const groups = {}; 
+            const allPosts = [];
+            activePlatformsP.forEach(plat => { allPosts.push(...uploadedData[plat]); });
+
+            allPosts.forEach(item => {
+                let cleanDesc = cleanTextContent(item.desc);
+                if (!cleanDesc.includes('petrobras')) return; 
+
+                let baseKey = generateIntelligentGroupKey(item.desc, item.date);
+                let key = baseKey; let counter = 1;
+                while (groups[key] && groups[key].platforms.has(item.platform)) { key = baseKey + '_' + counter; counter++; }
+                
+                if (!groups[key]) {
+                    groups[key] = { id: key, desc: item.desc, platforms: new Set(), accounts: new Set(), primaryAccounts: new Set(), origins: new Set(), types: new Set(), links: {}, views: 0, likes: 0, comments: 0, shares: 0, retweets: 0, saves: 0, totalInteracoes: 0, date: item.date ? item.date.getTime() : 0 };
+                }
+
+                groups[key].platforms.add(item.platform); groups[key].accounts.add(item.account); groups[key].origins.add(item.originFolder);
+                if (item.primaryAccount) groups[key].primaryAccounts.add(item.primaryAccount);
+                groups[key].types.add(item.type); groups[key].links[item.platform] = item.url;
+                groups[key].views += item.views; groups[key].likes += item.likes; groups[key].comments += item.comments; groups[key].shares += item.shares; groups[key].retweets += item.retweets; groups[key].saves += item.saves; groups[key].totalInteracoes += item.totalInteracoes;
+                if (item.date && item.date.getTime() > groups[key].date) groups[key].date = item.date.getTime();
+            });
+
+            const search = cleanTextContent(document.getElementById('p-searchInput').value).replace(/\s+/g, '');
+            const sortBy = document.getElementById('p-sortOrder').value; 
+            const formatSel = document.getElementById('p-formatFilter').value; 
+            const catSel = document.getElementById('p-categoryFilter').value;
+            const startStr = document.getElementById('p-date-start').value; 
+            const endStr = document.getElementById('p-date-end').value;
+            const startDate = startStr ? new Date(startStr + 'T00:00:00').getTime() : 0; 
+            const endDate = endStr ? new Date(endStr + 'T23:59:59').getTime() : new Date().getTime();
+
+            const finalData = [];
+            Object.values(groups).forEach(g => {
+                let finalType = g.types.has('Vídeo') ? 'Vídeo' : (g.types.has('Carrossel') ? 'Carrossel' : 'Imagem'); g.types = new Set([finalType]);
+                
+                if (g.date < startDate || g.date > endDate) return;
+                
+                let cleanGroupDesc = cleanTextContent(g.desc).replace(/\s+/g, '');
+                let unspacedDesc = cleanTextContent(g.desc); 
+                
+                if (search && !cleanGroupDesc.includes(search)) return;
+                if (formatSel !== 'Todos' && finalType !== formatSel) return;
+                
+                if (catSel !== 'Todos') {
+                    let keywords = petrobrasCatMap[catSel] || [];
+                    let match = keywords.some(kw => cleanGroupDesc.includes(kw.replace(/\s+/g, '')) || unspacedDesc.includes(kw));
+                    if (!match) return;
+                }
+                
+                finalData.push(g);
+            });
+
+            petrobrasRankedData = finalData.sort((a, b) => b[sortBy] - a[sortBy]);
+            const totalPages = Math.ceil(petrobrasRankedData.length / itemsPerPage) || 1; if (currentPageP > totalPages) currentPageP = 1;
+            
+            updatePetrobrasKPIs(); 
+            renderPetrobrasRanking(); 
             updateSelectionBar();
         }
 
         function updateKPIs() {
             let tViews = 0, tInt = 0, tLikes = 0, tComm = 0, tShare = 0, tRetweets = 0, tSave = 0;
-            let platCounts = { instagram: 0, facebook: 0, tiktok: 0, x: 0 };
-            let totalPostsIndividual = 0;
+            let platCounts = { instagram: 0, facebook: 0, tiktok: 0, x: 0 }; let totalPostsIndividual = 0;
 
             filteredRankedData.forEach(g => {
-                tViews += g.views; tInt += g.totalInteracoes;
-                tLikes += g.likes; tComm += g.comments; tShare += g.shares; 
-                tRetweets += g.retweets; tSave += g.saves;
-                
-                g.platforms.forEach(p => {
-                    if(platCounts[p] !== undefined) {
-                        platCounts[p]++;
-                        totalPostsIndividual++;
-                    }
-                });
+                tViews += g.views; tInt += g.totalInteracoes; tLikes += g.likes; tComm += g.comments; tShare += g.shares; tRetweets += g.retweets; tSave += g.saves;
+                g.platforms.forEach(p => { if(platCounts[p] !== undefined) { platCounts[p]++; totalPostsIndividual++; } });
             });
 
             document.getElementById('kpi-posts').innerText = totalPostsIndividual.toLocaleString('pt-BR');
@@ -919,102 +1019,96 @@
             document.getElementById('kpi-retweets').innerText = tRetweets.toLocaleString('pt-BR');
             document.getElementById('kpi-saves').innerText = tSave.toLocaleString('pt-BR');
             
-            const pcContainer = document.getElementById('post-count');
-            
-            let boxesHtml = `<div class="px-3 py-1.5 bg-indigo-50 border border-indigo-100 rounded-lg text-indigo-700 font-bold text-sm leading-none flex items-center">${totalPostsIndividual} Posts</div>`;
-            
-            const fixedOrder = ['instagram', 'facebook', 'tiktok', 'x'];
-            
-            fixedOrder.forEach(p => {
+            let boxesHtml = `<div class="px-3 py-1.5 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-700 font-bold text-xs">${totalPostsIndividual} Posts</div>`;
+            ['instagram', 'facebook', 'tiktok', 'x'].forEach(p => {
                 if(activePlatforms.includes(p) && platCounts[p] > 0) {
-                    boxesHtml += `
-                    <div class="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-700 font-bold text-sm leading-none flex items-center gap-1.5 shadow-sm">
-                        ${getPlatformSVG(p, "w-4 h-4 text-slate-500")}
-                        <span>${platCounts[p]}</span>
-                    </div>
-                    `;
+                    boxesHtml += `<div class="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-slate-700 font-bold text-xs flex items-center gap-1.5 shadow-sm">${getPlatformSVG(p, "w-3.5 h-3.5 text-slate-500")} <span>${platCounts[p]}</span></div>`;
                 }
             });
+            document.getElementById('post-count').innerHTML = boxesHtml;
+        }
+
+        function updatePetrobrasKPIs() {
+            let tViews = 0, tInt = 0, tLikes = 0, tComm = 0, tShare = 0, tRetweets = 0, tSave = 0;
+            let platCounts = { instagram: 0, facebook: 0, tiktok: 0, x: 0 }; let totalPostsIndividual = 0;
+
+            petrobrasRankedData.forEach(g => {
+                tViews += g.views; tInt += g.totalInteracoes; tLikes += g.likes; tComm += g.comments; tShare += g.shares; tRetweets += g.retweets; tSave += g.saves;
+                g.platforms.forEach(p => { if(platCounts[p] !== undefined) { platCounts[p]++; totalPostsIndividual++; } });
+            });
+
+            document.getElementById('p-kpi-posts').innerText = totalPostsIndividual.toLocaleString('pt-BR');
+            document.getElementById('p-kpi-views').innerText = tViews.toLocaleString('pt-BR');
+            document.getElementById('p-kpi-interactions').innerText = tInt.toLocaleString('pt-BR');
+            document.getElementById('p-kpi-likes').innerText = tLikes.toLocaleString('pt-BR');
+            document.getElementById('p-kpi-comments').innerText = tComm.toLocaleString('pt-BR');
+            document.getElementById('p-kpi-shares').innerText = tShare.toLocaleString('pt-BR');
+            document.getElementById('p-kpi-retweets').innerText = tRetweets.toLocaleString('pt-BR');
+            document.getElementById('p-kpi-saves').innerText = tSave.toLocaleString('pt-BR');
             
-            pcContainer.innerHTML = boxesHtml;
-        }
-
-        function getInstagramEmbedUrl(url) {
-            if (!url) return null;
-            try {
-                if (url.includes('instagram.com/p/') || url.includes('instagram.com/reel/')) {
-                    return `${url.replace(/\/$/, '')}/embed`;
+            let boxesHtml = `<div class="px-3 py-1.5 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-700 font-bold text-xs">${totalPostsIndividual} Posts</div>`;
+            ['instagram', 'facebook', 'tiktok', 'x'].forEach(p => {
+                if(activePlatformsP.includes(p) && platCounts[p] > 0) {
+                    boxesHtml += `<div class="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-slate-700 font-bold text-xs flex items-center gap-1.5 shadow-sm">${getPlatformSVG(p, "w-3.5 h-3.5 text-slate-500")} <span>${platCounts[p]}</span></div>`;
                 }
-            } catch(e) {}
-            return null;
+            });
+            document.getElementById('p-post-count').innerHTML = boxesHtml;
         }
 
-        function generatePostCardHTML(item, rankIndex, showEmbed) {
-            const plats = Array.from(item.platforms);
-            let mediaBlock = '';
+        function toggleSelectPost(id) { if (selectedPosts.has(id)) selectedPosts.delete(id); else selectedPosts.add(id); updateSelectionBar(); }
+        function clearSelection() { selectedPosts.clear(); document.querySelectorAll('.post-checkbox').forEach(cb => cb.checked = false); updateSelectionBar(); }
+        
+        function updateSelectionBar() {
+            const bar = document.getElementById('selection-bar');
+            if (selectedPosts.size === 0) { bar.classList.add('hidden'); bar.classList.remove('flex'); return; }
+            bar.classList.remove('hidden'); bar.classList.add('flex');
+            
+            let sViews = 0, sInt = 0, sLikes = 0, sComm = 0, sShare = 0, sRetweets = 0;
+            let currentDataset = activeTab === 'petrobras' ? petrobrasRankedData : filteredRankedData;
+
+            currentDataset.forEach(item => {
+                if (selectedPosts.has(item.id)) { sViews += item.views; sInt += item.totalInteracoes; sLikes += item.likes; sComm += item.comments; sShare += item.shares; sRetweets += item.retweets; }
+            });
+            
+            document.getElementById('sel-count').innerText = selectedPosts.size;
+            document.getElementById('sel-views').innerText = sViews.toLocaleString('pt-BR');
+            document.getElementById('sel-int').innerText = sInt.toLocaleString('pt-BR');
+            document.getElementById('sel-likes').innerText = sLikes.toLocaleString('pt-BR');
+            document.getElementById('sel-comments').innerText = sComm.toLocaleString('pt-BR');
+            document.getElementById('sel-shares').innerText = sShare.toLocaleString('pt-BR');
+            document.getElementById('sel-retweets').innerText = sRetweets.toLocaleString('pt-BR');
+        }
+
+        function getInstagramEmbedUrl(url) { if (!url) return null; try { if (url.includes('instagram.com/p/') || url.includes('instagram.com/reel/')) return `${url.replace(/\/$/, '')}/embed`; } catch(e) {} return null; }
+
+        function generatePostCardHTML(item, rankIndex, showEmbed, panel) {
+            const plats = Array.from(item.platforms); let mediaBlock = '';
 
             if (showEmbed) {
-                let embedHtml = null;
-                let primaryPlat = null;
-                
+                let embedHtml = null; let primaryPlat = null;
                 const prefOrder = ['instagram', 'facebook', 'tiktok', 'x'];
-                for (let pref of prefOrder) {
-                    if (plats.includes(pref) && item.links[pref]) {
-                        primaryPlat = pref;
-                        break;
-                    }
-                }
-                
+                for (let pref of prefOrder) { if (plats.includes(pref) && item.links[pref]) { primaryPlat = pref; break; } }
                 if (!primaryPlat) primaryPlat = plats[0];
 
                 const url = item.links[primaryPlat];
-                if (primaryPlat === 'instagram') {
-                    const embedUrl = getInstagramEmbedUrl(url);
-                    if(embedUrl) embedHtml = `<iframe src="${embedUrl}" width="320" height="400" frameborder="0" scrolling="no" class="-mt-2 rounded-xl"></iframe>`;
-                } else if (primaryPlat === 'tiktok' && url) {
-                    const ttMatch = url.match(/video\/(\d+)/);
-                    if (ttMatch) embedHtml = `<iframe src="https://www.tiktok.com/embed/v2/${ttMatch[1]}" width="320" height="400" frameborder="0" scrolling="no" class="rounded-xl"></iframe>`;
-                } else if (primaryPlat === 'facebook' && url) {
-                    embedHtml = `<iframe src="https://www.facebook.com/plugins/post.php?href=${encodeURIComponent(url)}&show_text=false&width=320" width="320" height="400" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowTransparency="true" allow="encrypted-media" class="rounded-xl bg-white"></iframe>`;
-                } else if (primaryPlat === 'x' && url) {
-                    embedHtml = `<div class="w-full sm:w-[320px] h-[360px] bg-white overflow-y-auto flex justify-center rounded-xl shadow-sm border border-slate-200 hide-scrollbar">
-                                    <blockquote class="twitter-tweet" data-dnt="true" data-theme="light" data-width="320">
-                                        <a href="${url}"></a>
-                                    </blockquote>
-                                 </div>`;
-                }
+                if (primaryPlat === 'instagram') { const embedUrl = getInstagramEmbedUrl(url); if(embedUrl) embedHtml = `<iframe src="${embedUrl}" width="320" height="400" frameborder="0" scrolling="no" class="-mt-2 rounded-xl"></iframe>`; } 
+                else if (primaryPlat === 'tiktok' && url) { const ttMatch = url.match(/video\/(\d+)/); if (ttMatch) embedHtml = `<iframe src="https://www.tiktok.com/embed/v2/${ttMatch[1]}" width="320" height="400" frameborder="0" scrolling="no" class="rounded-xl"></iframe>`; } 
+                else if (primaryPlat === 'facebook' && url) { embedHtml = `<iframe src="https://www.facebook.com/plugins/post.php?href=${encodeURIComponent(url)}&show_text=false&width=320" width="320" height="400" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowTransparency="true" allow="encrypted-media" class="rounded-xl bg-white"></iframe>`; } 
+                else if (primaryPlat === 'x' && url) { embedHtml = `<div class="w-full sm:w-[320px] h-[360px] bg-white overflow-y-auto flex justify-center rounded-xl shadow-sm border border-slate-200 hide-scrollbar"><blockquote class="twitter-tweet" data-dnt="true" data-theme="light" data-width="320"><a href="${url}"></a></blockquote></div>`; }
 
                 if (embedHtml) {
-                    mediaBlock = primaryPlat === 'x' 
-                        ? embedHtml 
-                        : `<div class="w-full sm:w-[320px] h-[360px] bg-slate-100 flex flex-col items-center justify-center flex-shrink-0 rounded-xl overflow-hidden shadow-sm border border-slate-200">${embedHtml}</div>`;
+                    mediaBlock = primaryPlat === 'x' ? embedHtml : `<div class="w-full sm:w-[320px] h-[360px] bg-slate-100 flex flex-col items-center justify-center flex-shrink-0 rounded-xl overflow-hidden shadow-sm border border-slate-200">${embedHtml}</div>`;
                 } else {
                     let thumbBg = plats.length > 1 ? 'plat-bg-multi' : `plat-bg-${plats[0]}`;
-                    mediaBlock = `
-                        <div class="w-full sm:w-[320px] h-48 sm:h-[360px] ${thumbBg} flex flex-col items-center justify-center flex-shrink-0 rounded-xl shadow-inner text-white p-6 text-center relative overflow-hidden">
-                            <div class="flex gap-4 mb-2 z-10 text-white">
-                                ${plats.map(p => getPlatformSVG(p, "w-10 h-10 drop-shadow-md text-white")).join('')}
-                            </div>
-                            <span class="text-xs font-bold uppercase tracking-wider bg-black/20 px-3 py-1 rounded-full z-10 mt-2 text-white">
-                                ${plats.length > 1 ? 'Multi-Plataforma' : plats[0]}
-                            </span>
-                            <p class="text-xs font-medium mt-4 z-10 opacity-80 max-w-[80%] break-words line-clamp-2 text-white">@${Array.from(item.accounts).join(', @')}</p>
-                        </div>
-                    `;
+                    mediaBlock = `<div class="w-full sm:w-[320px] h-48 sm:h-[360px] ${thumbBg} flex flex-col items-center justify-center flex-shrink-0 rounded-xl shadow-inner text-white p-6 text-center relative overflow-hidden"><div class="flex gap-4 mb-2 z-10 text-white">${plats.map(p => getPlatformSVG(p, "w-10 h-10 drop-shadow-md text-white")).join('')}</div><span class="text-xs font-bold uppercase tracking-wider bg-black/20 px-3 py-1 rounded-full z-10 mt-2 text-white">${plats.length > 1 ? 'Multi-Plataforma' : plats[0]}</span></div>`;
                 }
             } else {
                 let thumbBg = plats.length > 1 ? 'plat-bg-multi' : `plat-bg-${plats[0]}`;
-                mediaBlock = `
-                    <div class="w-14 h-14 rounded-xl ${thumbBg} flex items-center justify-center flex-shrink-0 shadow-sm text-white">
-                        ${plats.length > 1 ? `<i data-lucide="layers" class="w-6 h-6"></i>` : getPlatformSVG(plats[0], "w-6 h-6")}
-                    </div>
-                `;
+                mediaBlock = `<div class="w-14 h-14 rounded-xl ${thumbBg} flex items-center justify-center flex-shrink-0 shadow-sm text-white">${plats.length > 1 ? `<i data-lucide="layers" class="w-6 h-6"></i>` : getPlatformSVG(plats[0], "w-6 h-6")}</div>`;
             }
 
-            const containerStyle = showEmbed ? "flex-col sm:flex-row items-start" : "flex-col xl:flex-row items-start xl:items-center";
             const isChecked = selectedPosts.has(item.id) ? 'checked' : '';
-
-            let sortBy = document.getElementById('sortOrder').value;
+            let sortBy = document.getElementById(panel === 'dashboard' ? 'sortOrder' : 'p-sortOrder').value; 
             if (sortBy === 'date') sortBy = 'views'; 
 
             const metricsList = [
@@ -1028,122 +1122,495 @@
 
             let metricsHtml = metricsList.map(m => {
                 if (m.id === sortBy) {
-                    return `
-                        <div class="${m.style.bg} px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-center border ${m.style.border} min-w-[80px]">
-                            <p class="text-[9px] sm:text-[10px] ${m.style.textSm} font-bold uppercase tracking-wider mb-0.5">${m.label}</p>
-                            <p class="text-lg sm:text-xl font-bold ${m.style.textLg}">${m.val.toLocaleString('pt-BR')}</p>
-                        </div>
-                    `;
+                    return `<div class="${m.style.bg} px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-center border ${m.style.border} min-w-[80px]">
+                                <p class="text-[9px] sm:text-[10px] ${m.style.textSm} font-bold uppercase tracking-wider mb-0.5">${m.label}</p>
+                                <p class="text-lg sm:text-xl font-bold ${m.style.textLg}">${m.val.toLocaleString('pt-BR')}</p>
+                            </div>`;
                 } else {
-                    return `
-                        <div class="text-center px-1 sm:px-2 flex flex-col items-center justify-center" title="${m.label}">
-                            <div class="flex justify-center ${m.style.defaultColor} mb-1 opacity-80"><i data-lucide="${m.style.icon}" class="w-4 h-4"></i></div>
-                            <p class="text-sm font-bold text-slate-700">${m.val.toLocaleString('pt-BR')}</p>
-                        </div>
-                    `;
+                    return `<div class="text-center px-1 sm:px-2 flex flex-col items-center justify-center" title="${m.label}">
+                                <div class="flex justify-center ${m.style.defaultColor} mb-1 opacity-80"><i data-lucide="${m.style.icon}" class="w-4 h-4"></i></div>
+                                <p class="text-sm font-bold text-slate-700">${m.val.toLocaleString('pt-BR')}</p>
+                            </div>`;
                 }
             }).join('');
 
             return `
-            <div class="p-4 sm:p-6 flex ${containerStyle} gap-6 hover:bg-slate-50 transition border-b border-slate-50 last:border-0 relative">
-                
+            <div class="p-4 sm:p-6 flex flex-col sm:flex-row items-start gap-6 hover:bg-slate-50/80 transition border-b border-slate-100 last:border-0 relative">
                 <div class="w-10 flex flex-col items-center gap-3 flex-shrink-0 self-start xl:self-center">
-                    <span class="font-bold text-slate-400">#${rankIndex}</span>
+                    <span class="font-bold text-slate-400 text-sm">#${rankIndex}</span>
                     <input type="checkbox" onchange="toggleSelectPost('${item.id}')" ${isChecked} class="post-checkbox w-5 h-5 text-indigo-600 bg-slate-100 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer shadow-sm">
                 </div>
-
                 ${mediaBlock}
-                
                 <div class="flex-1 w-full text-left space-y-3 pt-2">
                     <div class="flex items-center gap-2 flex-wrap">
                         <div class="flex gap-1.5 mr-1 text-white">
-                            ${plats.map(p => `
-                                <a href="${item.links[p] || '#'}" target="_blank" title="Ver no ${p}" class="inline-flex items-center justify-center w-7 h-7 rounded-md plat-bg-${p} shadow-sm hover:opacity-80 transition-opacity text-white">
-                                    ${getPlatformSVG(p, "w-4 h-4 text-white")}
-                                </a>
-                            `).join('')}
+                            ${plats.map(p => `<a href="${item.links[p] || '#'}" target="_blank" title="Ver no ${p}" class="inline-flex items-center justify-center w-7 h-7 rounded-lg plat-bg-${p} shadow-sm hover:opacity-80 transition text-white">${getPlatformSVG(p, "w-4 h-4 text-white")}</a>`).join('')}
                         </div>
-
-                        <span class="inline-block text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md">@${Array.from(item.accounts).join(', @')}</span>
-                        <span class="inline-block text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-md">${Array.from(item.types).join(' / ')}</span>
+                        <span class="inline-block text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg">@${Array.from(item.accounts).join(', @')}</span>
+                        <span class="inline-block text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">${Array.from(item.types).join(' / ')}</span>
                     </div>
-                    
-                    <p class="text-sm font-medium line-clamp-3 text-slate-800 mt-2 pr-4">${item.desc}</p>
-                    
+                    <p class="text-xs sm:text-sm font-medium line-clamp-3 text-slate-800 mt-2 pr-4 leading-relaxed">${item.desc}</p>
                     <div class="flex flex-wrap gap-3 sm:gap-6 pt-4 border-t border-slate-100 mt-4 items-center">
                         ${metricsHtml}
                     </div>
                 </div>
-            </div>
-            `;
+            </div>`;
         }
         
-        function callTwitterRenderer() {
-            setTimeout(() => {
-                if (window.twttr && window.twttr.widgets) {
-                    window.twttr.widgets.load();
-                }
-            }, 100);
-        }
-
         function renderPaginatedRanking() {
             const container = document.getElementById('rankingContainer');
-            
             if (filteredRankedData.length === 0) {
-                container.innerHTML = `<div class="p-12 text-center text-slate-500">Nenhum resultado encontrado no período ou filtros selecionados.</div>`;
-                document.getElementById('current-page').innerText = 1;
-                document.getElementById('total-pages').innerText = 1;
-                document.getElementById('btn-prev').disabled = true;
-                document.getElementById('btn-next').disabled = true;
-                return;
+                container.innerHTML = `<div class="p-12 text-center text-slate-400 font-medium">Nenhum resultado encontrado.</div>`;
+                document.getElementById('current-page').innerText = 1; document.getElementById('total-pages').innerText = 1;
+                document.getElementById('btn-prev').disabled = true; document.getElementById('btn-next').disabled = true; return;
             }
-
             const totalPages = Math.ceil(filteredRankedData.length / itemsPerPage) || 1;
-            
             const startIndex = (currentPage - 1) * itemsPerPage;
-            const endIndex = startIndex + itemsPerPage;
-            const currentItems = filteredRankedData.slice(startIndex, endIndex);
+            container.innerHTML = filteredRankedData.slice(startIndex, startIndex + itemsPerPage).map((item, i) => generatePostCardHTML(item, startIndex + i + 1, true, 'dashboard')).join('');
+            document.getElementById('current-page').innerText = currentPage; document.getElementById('total-pages').innerText = totalPages;
+            document.getElementById('btn-prev').disabled = currentPage === 1; document.getElementById('btn-next').disabled = currentPage === totalPages;
+            lucide.createIcons(); setTimeout(() => { if (window.twttr) window.twttr.widgets.load(); }, 100);
+        }
 
-            container.innerHTML = currentItems.map((item, localIndex) => {
-                const globalRankIndex = startIndex + localIndex + 1;
-                return generatePostCardHTML(item, globalRankIndex, true);
-            }).join('');
-
-            document.getElementById('current-page').innerText = currentPage;
-            document.getElementById('total-pages').innerText = totalPages;
-            
-            document.getElementById('btn-prev').disabled = currentPage === 1;
-            document.getElementById('btn-next').disabled = currentPage === totalPages;
-
-            lucide.createIcons();
-            callTwitterRenderer();
+        function renderPetrobrasRanking() {
+            const container = document.getElementById('petrobrasRankingContainer');
+            if (petrobrasRankedData.length === 0) {
+                container.innerHTML = `<div class="p-12 text-center text-slate-400 font-medium">Nenhum resultado encontrado.</div>`;
+                document.getElementById('p-current-page').innerText = 1; document.getElementById('p-total-pages').innerText = 1;
+                document.getElementById('p-btn-prev').disabled = true; document.getElementById('p-btn-next').disabled = true; return;
+            }
+            const totalPages = Math.ceil(petrobrasRankedData.length / itemsPerPage) || 1;
+            const startIndex = (currentPageP - 1) * itemsPerPage;
+            container.innerHTML = petrobrasRankedData.slice(startIndex, startIndex + itemsPerPage).map((item, i) => generatePostCardHTML(item, startIndex + i + 1, true, 'petrobras')).join('');
+            document.getElementById('p-current-page').innerText = currentPageP; document.getElementById('p-total-pages').innerText = totalPages;
+            document.getElementById('p-btn-prev').disabled = currentPageP === 1; document.getElementById('p-btn-next').disabled = currentPageP === totalPages;
+            lucide.createIcons(); setTimeout(() => { if (window.twttr) window.twttr.widgets.load(); }, 100);
         }
 
         function renderWorstRanking() {
             const container = document.getElementById('worstContainer');
-            
-            if (filteredRankedData.length === 0) {
-                container.innerHTML = `<div class="p-12 text-center text-slate-500">Nenhum resultado encontrado no período ou filtros selecionados.</div>`;
-                return;
-            }
-
+            if (filteredRankedData.length === 0) { container.innerHTML = `<div class="p-12 text-center text-slate-400 font-medium">Nenhum resultado encontrado.</div>`; return; }
             const totalItems = filteredRankedData.length;
-            const worstCount = Math.min(10, totalItems);
-            const worstItems = filteredRankedData.slice(-worstCount).reverse();
-
-            container.innerHTML = worstItems.map((item, localIndex) => {
-                const globalRankIndex = totalItems - localIndex;
-                return generatePostCardHTML(item, globalRankIndex, true);
-            }).join('');
-
-            lucide.createIcons();
-            callTwitterRenderer();
+            container.innerHTML = filteredRankedData.slice(-Math.min(10, totalItems)).reverse().map((item, i) => generatePostCardHTML(item, totalItems - i, true, 'dashboard')).join('');
+            lucide.createIcons(); setTimeout(() => { if (window.twttr) window.twttr.widgets.load(); }, 100);
         }
 
-        function changePage(direction) {
-            currentPage += direction;
-            renderPaginatedRanking();
-            document.getElementById('rankingContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        function changePage(direction, panel) {
+            if (panel === 'dashboard') {
+                currentPage += direction; renderPaginatedRanking();
+                document.getElementById('rankingContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                currentPageP += direction; renderPetrobrasRanking();
+                document.getElementById('petrobrasRankingContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function filterDataByAccount(dataList, accountVal) {
+            if (accountVal === 'Todas') return dataList;
+            return dataList.filter(item => {
+                let accToCheck = accountVal === 'fpf' ? 'fpf_oficial' : accountVal;
+                let cleanDesc = cleanTextContent(item.desc);
+                if (item.primaryAccount === accToCheck || item.originFolder === accToCheck || item.account === accToCheck) return true;
+                if (accToCheck === 'paulistao' && (cleanDesc.includes('paulistao'))) return true;
+                if (accToCheck === 'paulistao_f' && (cleanDesc.includes('paulistaof') || cleanDesc.includes('feminino'))) return true;
+                if (accToCheck === 'copinha' && cleanDesc.includes('copinha')) return true;
+                return false;
+            });
+        }
+
+        function setPeriodComparisonMode(mode) {
+            if (comparisonMode === mode) comparisonMode = 'custom';
+            else comparisonMode = mode;
+
+            ['15d', '30d'].forEach(m => {
+                const btn = document.getElementById(`btn-mode-${m}`);
+                if (btn) {
+                    if (comparisonMode === m) btn.className = "px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold transition shadow-sm";
+                    else btn.className = "px-3 py-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-lg text-xs font-bold transition";
+                }
+            });
+
+            const customContainer = document.getElementById('customMonthsContainer');
+            const selectA = document.getElementById('monthA');
+            const selectB = document.getElementById('monthB');
+
+            if (comparisonMode === '15d' || comparisonMode === '30d') {
+                customContainer.classList.add('opacity-50', 'pointer-events-none');
+                selectA.classList.add('bg-slate-100', 'text-slate-400');
+                selectB.classList.add('bg-slate-100', 'text-slate-400');
+            } else {
+                customContainer.classList.remove('opacity-50', 'pointer-events-none');
+                selectA.classList.remove('bg-slate-100', 'text-slate-400');
+                selectB.classList.remove('bg-slate-100', 'text-slate-400');
+            }
+
+            renderComparisonChartOnly();
+        }
+
+        function onMonthDropdownChange() {
+            if (comparisonMode === '15d' || comparisonMode === '30d') {
+                comparisonMode = 'custom';
+                ['15d', '30d'].forEach(m => {
+                    const btn = document.getElementById(`btn-mode-${m}`);
+                    if (btn) btn.className = "px-3 py-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-lg text-xs font-bold transition";
+                });
+                const customContainer = document.getElementById('customMonthsContainer');
+                const selectA = document.getElementById('monthA');
+                const selectB = document.getElementById('monthB');
+                
+                customContainer.classList.remove('opacity-50', 'pointer-events-none');
+                selectA.classList.remove('bg-slate-100', 'text-slate-400');
+                selectB.classList.remove('bg-slate-100', 'text-slate-400');
+            }
+            renderComparisonChartOnly();
+        }
+
+        const monthNamesMap = {
+            '01': 'Jan', '02': 'Fev', '03': 'Mar', '04': 'Abr', '05': 'Mai', '06': 'Jun',
+            '07': 'Jul', '08': 'Ago', '09': 'Set', '10': 'Out', '11': 'Nov', '12': 'Dez'
+        };
+
+        function getMonthLabel(YYYYMM) {
+            const [y, m] = YYYYMM.split('-');
+            return `${monthNamesMap[m]} - ${y.slice(2)}`;
+        }
+
+        function populateMonthSelectors() {
+            let allPosts = [];
+            Object.values(uploadedData).forEach(arr => allPosts.push(...arr));
+            const monthsSet = new Set();
+            allPosts.forEach(item => {
+                if (item.date && !isNaN(item.date.getTime())) {
+                    const d = new Date(item.date);
+                    const y = d.getFullYear();
+                    const m = String(d.getMonth() + 1).padStart(2, '0');
+                    monthsSet.add(`${y}-${m}`);
+                }
+            });
+            const sortedMonths = Array.from(monthsSet).sort();
+            let html = sortedMonths.map(m => `<option value="${m}">${getMonthLabel(m)}</option>`).join('');
+            if (html === '') html = '<option value="">Sem dados</option>';
+            
+            document.getElementById('monthA').innerHTML = html;
+            document.getElementById('monthB').innerHTML = html;
+            
+            let formatHtml = '<option value="todos" selected>Todos os Períodos</option>' + sortedMonths.map(m => `<option value="${m}">${getMonthLabel(m)}</option>`).join('');
+            document.getElementById('formatMonthSelect').innerHTML = formatHtml;
+            document.getElementById('socialMonthSelect').innerHTML = formatHtml;
+
+            if (sortedMonths.length >= 2) {
+                document.getElementById('monthA').value = sortedMonths[sortedMonths.length - 2];
+                document.getElementById('monthB').value = sortedMonths[sortedMonths.length - 1];
+            } else if (sortedMonths.length === 1) {
+                document.getElementById('monthA').value = sortedMonths[0];
+                document.getElementById('monthB').value = sortedMonths[0];
+            }
+        }
+
+        function toggleTimelineMode() {
+            timelineMode = timelineMode === 'last4' ? 'fullYear' : 'last4';
+            const btn = document.getElementById('btn-timeline-mode');
+            if (btn) btn.innerText = timelineMode === 'last4' ? 'Ver Ano Inteiro' : 'Ver Últimos 4 Meses';
+            renderMonthlyLineChartOnly();
+        }
+
+        function onGlobalFilterChange() { renderAnalyticsCharts(); }
+        function onFormatMonthChange() { renderFormatsChartOnly(); }
+        function onSocialMonthChange() { renderSocialChartOnly(); }
+        function onSocialFormatChange() { renderSocialChartOnly(); }
+        function onMonthlyCardMetricChange() { renderMonthlyCardsOnly(); }
+
+        function renderComparisonChartOnly() {
+            let allPosts = []; Object.values(uploadedData).forEach(arr => allPosts.push(...arr));
+            if (allPosts.length === 0) return;
+            const globalAcc = document.getElementById('globalAnalAcc').value;
+            const globalMetric = document.getElementById('globalAnalMetric').value;
+            const filtered1 = filterDataByAccount(allPosts, globalAcc);
+
+            let labelA = '', labelB = '', valA = 0, valB = 0;
+            const now = new Date(); const currentYear = now.getFullYear(); const currentMonth = now.getMonth() + 1; const currentDay = now.getDate();
+
+            if (comparisonMode === 'custom') {
+                let mA = document.getElementById('monthA').value;
+                let mB = document.getElementById('monthB').value;
+                if (!mA || !mB) { mA = '2026-01'; mB = '2026-02'; }
+                labelA = getMonthLabel(mA); labelB = getMonthLabel(mB);
+
+                const [yB, mBNum] = mB.split('-').map(Number);
+                const isCurrentMonthB = (yB === currentYear && mBNum === currentMonth);
+
+                filtered1.forEach(item => {
+                    if (item.date && !isNaN(item.date.getTime())) {
+                        const d = new Date(item.date); const y = d.getFullYear(); const m = d.getMonth() + 1; const day = d.getDate();
+                        const key = `${y}-${String(m).padStart(2,'0')}`;
+                        let metricVal = globalMetric === 'shares_retweets' ? ((item.shares || 0) + (item.retweets || 0)) : (item[globalMetric] || 0);
+                        if (key === mA) {
+                            if (isCurrentMonthB && currentDay < 28) { if (day <= currentDay) valA += metricVal; } else { valA += metricVal; }
+                        }
+                        if (key === mB) { valB += metricVal; }
+                    }
+                });
+            } else if (comparisonMode === '15d' || comparisonMode === '30d') {
+                let daysCount = comparisonMode === '15d' ? 15 : 30;
+                
+                const dNow = new Date();
+                dNow.setHours(23, 59, 59, 999);
+                const nowTime = dNow.getTime();
+                
+                const recentStart = new Date();
+                recentStart.setDate(dNow.getDate() - daysCount + 1);
+                recentStart.setHours(0, 0, 0, 0);
+
+                const prevEnd = new Date(recentStart);
+                prevEnd.setDate(recentStart.getDate() - 1);
+                prevEnd.setHours(23, 59, 59, 999);
+
+                const prevStart = new Date(prevEnd);
+                prevStart.setDate(prevEnd.getDate() - daysCount + 1);
+                prevStart.setHours(0, 0, 0, 0);
+
+                const pad = n => n.toString().padStart(2, '0');
+                const fmt = d => `${pad(d.getDate())}/${pad(d.getMonth()+1)}`;
+
+                labelB = `${fmt(recentStart)} a ${fmt(dNow)}`;
+                labelA = `${fmt(prevStart)} a ${fmt(prevEnd)}`;
+
+                filtered1.forEach(item => {
+                    if (item.date && !isNaN(item.date.getTime())) {
+                        const t = item.date.getTime();
+                        let metricVal = globalMetric === 'shares_retweets' ? ((item.shares || 0) + (item.retweets || 0)) : (item[globalMetric] || 0);
+                        if (t >= recentStart.getTime() && t <= dNow.getTime()) { valB += metricVal; } 
+                        else if (t >= prevStart.getTime() && t <= prevEnd.getTime()) { valA += metricVal; }
+                    }
+                });
+            }
+
+            if (chartsInstances['period']) chartsInstances['period'].destroy();
+            chartsInstances['period'] = new Chart(document.getElementById('chartPeriodComparison'), {
+                type: 'bar',
+                data: { labels: [labelA, labelB], datasets: [{ data: [valA, valB], backgroundColor: ['#94a3b8', '#6366f1'], borderRadius: 6 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { title: function() { return ''; }, label: function(context) { return context.raw.toLocaleString('pt-BR'); } } } }, scales: { y: { grid: { display: false }, ticks: { callback: formatYAxisLabel } } } }
+            });
+
+            let diff1 = valA > 0 ? (((valB - valA) / valA) * 100).toFixed(1) : 0;
+            document.getElementById('period-summary-box').innerHTML = `
+                <div class="flex flex-col justify-center items-center w-full space-y-2">
+                    <div class="flex justify-between w-full px-2 text-xs">
+                        <span class="text-slate-400 font-bold max-w-[50%] leading-tight text-left">${labelA}:<br><b>${valA.toLocaleString('pt-BR')}</b></span>
+                        <span class="text-slate-400 font-bold max-w-[50%] leading-tight text-right">${labelB}:<br><b>${valB.toLocaleString('pt-BR')}</b></span>
+                    </div>
+                    <div class="pt-2 border-t border-slate-200/60 w-full text-center">
+                        <span class="text-[10px] text-slate-400 uppercase font-bold block">Variação do Período</span>
+                        <span class="text-xl font-black ${diff1 >= 0 ? 'text-emerald-600' : 'text-rose-600'}">${diff1 >= 0 ? '+' : ''}${diff1}%</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderFormatsChartOnly() {
+            let allPosts = []; Object.values(uploadedData).forEach(arr => allPosts.push(...arr));
+            if (allPosts.length === 0) return;
+            const globalAcc = document.getElementById('globalAnalAcc').value;
+            const globalMetric = document.getElementById('globalAnalMetric').value;
+            const formatMonth = document.getElementById('formatMonthSelect').value;
+            const filteredFormats = filterDataByAccount(allPosts, globalAcc).filter(item => {
+                if (formatMonth === 'todos') return true;
+                if (!item.date || isNaN(item.date.getTime())) return false;
+                const d = new Date(item.date);
+                return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` === formatMonth;
+            });
+
+            let fmtValues = { Imagem: 0, Vídeo: 0, Carrossel: 0 };
+            filteredFormats.forEach(i => {
+                let fmt = i.type || 'Imagem';
+                let metricVal = globalMetric === 'shares_retweets' ? ((i.shares || 0) + (i.retweets || 0)) : (i[globalMetric] || 0);
+                if (fmtValues[fmt] !== undefined) fmtValues[fmt] += metricVal;
+            });
+
+            if (chartsInstances['formats']) chartsInstances['formats'].destroy();
+            chartsInstances['formats'] = new Chart(document.getElementById('chartFormatsPerformance'), {
+                type: 'bar',
+                data: { labels: ['Imagem', 'Vídeo', 'Carrossel'], datasets: [{ data: [fmtValues.Imagem, fmtValues.Vídeo, fmtValues.Carrossel], backgroundColor: ['#8b5cf6', '#ec4899', '#3b82f6'], borderRadius: 6 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { title: function() { return ''; }, label: function(context) { return context.raw.toLocaleString('pt-BR'); } } } }, scales: { y: { grid: { display: false }, ticks: { callback: formatYAxisLabel } } } }
+            });
+        }
+
+        function renderSocialChartOnly() {
+            let allPosts = []; Object.values(uploadedData).forEach(arr => allPosts.push(...arr));
+            if (allPosts.length === 0) return;
+            const globalAcc = document.getElementById('globalAnalAcc').value;
+            const globalMetric = document.getElementById('globalAnalMetric').value;
+            const socialFormat = document.getElementById('socialFormatSelect').value;
+            const socialMonth = document.getElementById('socialMonthSelect').value;
+
+            const filteredSocial = filterDataByAccount(allPosts, globalAcc).filter(item => {
+                if (socialFormat !== 'Todos' && item.type !== socialFormat) return false;
+                if (socialMonth !== 'todos') {
+                    if (!item.date || isNaN(item.date.getTime())) return false;
+                    const d = new Date(item.date);
+                    const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+                    if (k !== socialMonth) return false;
+                }
+                return true;
+            });
+
+            let socialValues = { instagram: 0, facebook: 0, tiktok: 0, x: 0 };
+            filteredSocial.forEach(item => {
+                let val = globalMetric === 'shares_retweets' ? ((item.shares || 0) + (item.retweets || 0)) : (item[globalMetric] || 0);
+                if (socialValues[item.platform] !== undefined) socialValues[item.platform] += val;
+            });
+
+            if (chartsInstances['social']) chartsInstances['social'].destroy();
+            chartsInstances['social'] = new Chart(document.getElementById('chartSocialPerformance'), {
+                type: 'bar',
+                data: { labels: ['Instagram', 'Facebook', 'TikTok', 'X (Twitter)'], datasets: [{ data: [socialValues.instagram, socialValues.facebook, socialValues.tiktok, socialValues.x], backgroundColor: ['#e1306c', '#1877f2', '#000000', '#0f1419'], borderRadius: 6 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { title: function() { return ''; }, label: function(context) { return context.raw.toLocaleString('pt-BR'); } } } }, scales: { y: { grid: { display: false }, ticks: { callback: formatYAxisLabel } } } }
+            });
+        }
+
+        function renderMonthlyLineChartOnly() {
+            let allPosts = []; Object.values(uploadedData).forEach(arr => allPosts.push(...arr));
+            if (allPosts.length === 0) return;
+            const globalAcc = document.getElementById('globalAnalAcc').value;
+            const globalMetric = document.getElementById('globalAnalMetric').value;
+            const filtered2 = filterDataByAccount(allPosts, globalAcc);
+
+            const now = new Date(); const currentYear = now.getFullYear(); const currentMonth = now.getMonth() + 1;
+            const activeMonthCount = currentYear === new Date().getFullYear() ? currentMonth : 12;
+            const fullMonthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+            
+            let fullMonthlyValues = new Array(activeMonthCount).fill(0);
+            for (let idx = 0; idx < activeMonthCount; idx++) {
+                let metricVal = 0;
+                filtered2.forEach(item => {
+                    if (item.date && !isNaN(item.date.getTime())) {
+                        const d = new Date(item.date);
+                        if (d.getFullYear() === currentYear && d.getMonth() === idx) {
+                            metricVal += (globalMetric === 'shares_retweets' ? ((item.shares || 0) + (item.retweets || 0)) : (item[globalMetric] || 0));
+                        }
+                    }
+                });
+                fullMonthlyValues[idx] = metricVal;
+            }
+
+            let chartLabels = fullMonthNames.slice(0, activeMonthCount);
+            let chartValues = fullMonthlyValues;
+
+            if (timelineMode === 'last4' && activeMonthCount > 4) {
+                const startIndex = activeMonthCount - 4;
+                chartLabels = fullMonthNames.slice(startIndex, activeMonthCount);
+                chartValues = fullMonthlyValues.slice(startIndex, activeMonthCount);
+            }
+
+            if (chartsInstances['monthlyLine']) chartsInstances['monthlyLine'].destroy();
+            chartsInstances['monthlyLine'] = new Chart(document.getElementById('chartMonthlyEvolutionLine'), {
+                type: 'line',
+                data: {
+                    labels: chartLabels,
+                    datasets: [{ data: chartValues, borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 3, fill: true, tension: 0.3 }]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { title: function() { return ''; }, label: function(context) { return context.raw.toLocaleString('pt-BR'); } } } },
+                    scales: { y: { grid: { display: false }, ticks: { callback: formatYAxisLabel } } } 
+                }
+            });
+        }
+
+        function renderMonthlyCardsOnly() {
+            let allPosts = []; Object.values(uploadedData).forEach(arr => allPosts.push(...arr));
+            if (allPosts.length === 0) return;
+            const globalAcc = document.getElementById('globalAnalAcc').value;
+            const filtered2 = filterDataByAccount(allPosts, globalAcc);
+
+            const now = new Date(); const currentYear = now.getFullYear(); const currentMonth = now.getMonth() + 1;
+            let monthsStats = []; let maxViewsPerPost = 0; let maxIntPerPost = 0; let maxPostsCount = 0;
+
+            for (let idx = 0; idx < 12; idx++) {
+                let pCount = 0, vCount = 0, iCount = 0, lCount = 0, cCount = 0, sCount = 0, rCount = 0;
+                filtered2.forEach(item => {
+                    if (item.date && !isNaN(item.date.getTime())) {
+                        const d = new Date(item.date);
+                        if (d.getFullYear() === currentYear && d.getMonth() === idx) {
+                            pCount++; vCount += (item.views || 0); iCount += (item.totalInteracoes || 0);
+                            lCount += (item.likes || 0); cCount += (item.comments || 0); sCount += (item.shares || 0); rCount += (item.retweets || 0);
+                        }
+                    }
+                });
+                let vpp = pCount > 0 ? vCount / pCount : 0; let ipp = pCount > 0 ? iCount / pCount : 0;
+                monthsStats.push({ idx, pCount, vCount, iCount, lCount, cCount, sCount, rCount, vpp, ipp, rawScore: 0 });
+                if (vpp > maxViewsPerPost) maxViewsPerPost = vpp; if (ipp > maxIntPerPost) maxIntPerPost = ipp; if (pCount > maxPostsCount) maxPostsCount = pCount;
+            }
+
+            let rawScoresList = [];
+            monthsStats.forEach(m => {
+                let effViews = maxViewsPerPost > 0 ? (m.vpp / maxViewsPerPost) : 0;
+                let effInt = maxIntPerPost > 0 ? (m.ipp / maxIntPerPost) : 0;
+                let effPosts = maxPostsCount > 0 ? (m.pCount / maxPostsCount) : 0;
+                
+                if (m.pCount > 0) {
+                    m.rawScore = ((effViews * 0.4) + (effInt * 0.4) + (effPosts * 0.2)) * 10.0;
+                }
+                rawScoresList.push(m.rawScore);
+            });
+            
+            let absoluteMaxRaw = Math.max(...rawScoresList);
+
+            const cardMetric = document.getElementById('monthlyCardMetric') ? document.getElementById('monthlyCardMetric').value : 'interacao';
+            const fullMonthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+            let cardsHtml = '';
+
+            monthsStats.forEach(m => {
+                let isFuture = (currentYear === new Date().getFullYear() && m.idx + 1 > currentMonth);
+                let finalScore = 0.0;
+                
+                if (m.pCount > 0 && absoluteMaxRaw > 0) {
+                    finalScore = (m.rawScore / absoluteMaxRaw) * 10;
+                }
+
+                let displayVal = ''; 
+                if (cardMetric === 'views') { displayVal = formatRealCompact(m.vpp); } 
+                else { displayVal = formatRealCompact(m.ipp); }
+
+                let bgClass = 'bg-slate-50 border-slate-200/70 text-slate-800';
+                let badgeColor = 'bg-slate-200 text-slate-700';
+
+                if (!isFuture && m.pCount > 0) {
+                    if (finalScore >= 8.0) { bgClass = 'bg-emerald-50/80 border-emerald-200 text-emerald-950 shadow-sm'; badgeColor = 'bg-emerald-600 text-white'; } 
+                    else if (finalScore >= 5.0) { bgClass = 'bg-blue-50/80 border-blue-200 text-blue-950 shadow-sm'; badgeColor = 'bg-blue-600 text-white'; } 
+                    else if (finalScore >= 3.0) { bgClass = 'bg-amber-50/80 border-amber-200 text-amber-950 shadow-sm'; badgeColor = 'bg-amber-600 text-white'; } 
+                    else { bgClass = 'bg-slate-50 border-slate-200/70 text-slate-800 shadow-sm'; badgeColor = 'bg-slate-500 text-white'; }
+                }
+
+                cardsHtml += `
+                    <div class="${bgClass} p-3.5 rounded-xl border flex flex-col justify-between ${isFuture ? 'opacity-40' : ''}">
+                        <div class="flex items-center justify-between mb-2 pb-1 border-b border-current/10">
+                            <span class="text-xs font-bold">${fullMonthNames[m.idx]}</span>
+                            <span class="text-[10px] font-black px-1.5 py-0.5 rounded-md ${badgeColor}" title="Métrica Selecionada">${isFuture ? '-' : displayVal}</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-y-1.5 gap-x-2 text-[11px]">
+                            <div class="flex items-center gap-1.5" title="Posts"><i data-lucide="layers" class="w-3.5 h-3.5 text-indigo-500 flex-shrink-0"></i><span class="font-semibold truncate">${m.pCount}</span></div>
+                            <div class="flex items-center gap-1.5" title="Views"><i data-lucide="eye" class="w-3.5 h-3.5 text-slate-500 flex-shrink-0"></i><span class="font-semibold truncate">${formatYAxisLabel(m.vCount)}</span></div>
+                            <div class="flex items-center gap-1.5" title="Interações"><i data-lucide="activity" class="w-3.5 h-3.5 text-rose-500 flex-shrink-0"></i><span class="font-semibold truncate">${formatYAxisLabel(m.iCount)}</span></div>
+                            <div class="flex items-center gap-1.5" title="Curtidas"><i data-lucide="heart" class="w-3.5 h-3.5 text-rose-400 flex-shrink-0"></i><span class="font-semibold truncate">${formatYAxisLabel(m.lCount)}</span></div>
+                            <div class="flex items-center gap-1.5" title="Comentários"><i data-lucide="message-circle" class="w-3.5 h-3.5 text-emerald-500 flex-shrink-0"></i><span class="font-semibold truncate">${formatYAxisLabel(m.cCount)}</span></div>
+                            <div class="flex items-center gap-1.5" title="Compartilhamentos"><i data-lucide="share-2" class="w-3.5 h-3.5 text-blue-500 flex-shrink-0"></i><span class="font-semibold truncate">${formatYAxisLabel(m.sCount)}</span></div>
+                            <div class="flex items-center gap-1.5 col-span-2" title="Retweets"><i data-lucide="repeat" class="w-3.5 h-3.5 text-sky-500 flex-shrink-0"></i><span class="font-semibold truncate">${formatYAxisLabel(m.rCount)}</span></div>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('monthly-cards-grid').innerHTML = cardsHtml;
+            lucide.createIcons();
+        }
+
+        function renderAnalyticsCharts() {
+            renderComparisonChartOnly();
+            renderFormatsChartOnly();
+            renderSocialChartOnly();
+            renderMonthlyLineChartOnly();
+            renderMonthlyCardsOnly();
         }
 
         document.getElementById('searchInput').addEventListener('input', applyFiltersAndGroup);
@@ -1152,6 +1619,13 @@
         document.getElementById('accountFilter').addEventListener('change', applyFiltersAndGroup);
         document.getElementById('date-start').addEventListener('change', applyFiltersAndGroup);
         document.getElementById('date-end').addEventListener('change', applyFiltersAndGroup);
+
+        document.getElementById('p-searchInput').addEventListener('input', applyPetrobrasFilters);
+        document.getElementById('p-sortOrder').addEventListener('change', applyPetrobrasFilters);
+        document.getElementById('p-formatFilter').addEventListener('change', applyPetrobrasFilters);
+        document.getElementById('p-categoryFilter').addEventListener('change', applyPetrobrasFilters);
+        document.getElementById('p-date-start').addEventListener('change', applyPetrobrasFilters);
+        document.getElementById('p-date-end').addEventListener('change', applyPetrobrasFilters);
 
     </script>
 </body>
