@@ -464,7 +464,13 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button onclick="toggleTimelineMode()" id="btn-timeline-mode" class="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition shadow-sm">Ver Ano Inteiro</button>
+                        <span class="text-xs font-bold text-slate-400 uppercase">Visualização:</span>
+                        <select id="timelineModeSelect" onchange="changeTimelineMode()" class="px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-200 outline-none text-xs font-semibold text-slate-700 shadow-sm">
+                            <option value="last4Months" selected>Últimos 4 Meses</option>
+                            <option value="last4Fortnights">Últimas 4 Quinzenas</option>
+                            <option value="last4Weeks">Últimas 4 Semanas</option>
+                            <option value="fullYear">Ano Inteiro</option>
+                        </select>
                     </div>
                 </div>
                 
@@ -520,7 +526,7 @@
 
         let selectedPosts = new Set();
         let comparisonMode = 'custom'; 
-        let timelineMode = 'last4'; 
+        let timelineMode = 'last4Months'; 
         let activeTab = 'dashboard';
         
         const hashtagsSet = new Set();
@@ -1307,10 +1313,8 @@
             }
         }
 
-        function toggleTimelineMode() {
-            timelineMode = timelineMode === 'last4' ? 'fullYear' : 'last4';
-            const btn = document.getElementById('btn-timeline-mode');
-            if (btn) btn.innerText = timelineMode === 'last4' ? 'Ver Ano Inteiro' : 'Ver Últimos 4 Meses';
+        function changeTimelineMode() {
+            timelineMode = document.getElementById('timelineModeSelect').value;
             renderMonthlyLineChartOnly();
         }
 
@@ -1475,31 +1479,77 @@
             const globalMetric = document.getElementById('globalAnalMetric').value;
             const filtered2 = filterDataByAccount(allPosts, globalAcc);
 
-            const now = new Date(); const currentYear = now.getFullYear(); const currentMonth = now.getMonth() + 1;
-            const activeMonthCount = currentYear === new Date().getFullYear() ? currentMonth : 12;
-            const fullMonthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+            let chartLabels = [];
+            let chartValues = [];
+            const now = new Date();
             
-            let fullMonthlyValues = new Array(activeMonthCount).fill(0);
-            for (let idx = 0; idx < activeMonthCount; idx++) {
-                let metricVal = 0;
+            const fmtDDMM = (d) => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+
+            if (timelineMode === 'last4Weeks' || timelineMode === 'last4Fortnights') {
+                const periodDays = timelineMode === 'last4Weeks' ? 7 : 15;
+                const buckets = [];
+                
+                // Cria 4 blocos de tempo recuando a partir de hoje
+                for (let i = 3; i >= 0; i--) {
+                    let endD = new Date(now);
+                    endD.setDate(now.getDate() - (i * periodDays));
+                    endD.setHours(23, 59, 59, 999);
+                    
+                    let startD = new Date(endD);
+                    startD.setDate(endD.getDate() - periodDays + 1);
+                    startD.setHours(0, 0, 0, 0);
+                    
+                    buckets.push({
+                        start: startD.getTime(),
+                        end: endD.getTime(),
+                        label: `${fmtDDMM(startD)} a ${fmtDDMM(endD)}`,
+                        value: 0
+                    });
+                }
+                
                 filtered2.forEach(item => {
                     if (item.date && !isNaN(item.date.getTime())) {
-                        const d = new Date(item.date);
-                        if (d.getFullYear() === currentYear && d.getMonth() === idx) {
-                            metricVal += (globalMetric === 'shares_retweets' ? ((item.shares || 0) + (item.retweets || 0)) : (item[globalMetric] || 0));
+                        const t = item.date.getTime();
+                        for (let b of buckets) {
+                            if (t >= b.start && t <= b.end) {
+                                b.value += (globalMetric === 'shares_retweets' ? ((item.shares || 0) + (item.retweets || 0)) : (item[globalMetric] || 0));
+                                break;
+                            }
                         }
                     }
                 });
-                fullMonthlyValues[idx] = metricVal;
-            }
+                
+                chartLabels = buckets.map(b => b.label);
+                chartValues = buckets.map(b => b.value);
+                
+            } else {
+                // Lógica de Ano Inteiro e Últimos 4 Meses
+                const currentYear = now.getFullYear(); const currentMonth = now.getMonth() + 1;
+                const activeMonthCount = currentYear === new Date().getFullYear() ? currentMonth : 12;
+                const fullMonthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+                
+                let fullMonthlyValues = new Array(activeMonthCount).fill(0);
+                for (let idx = 0; idx < activeMonthCount; idx++) {
+                    let metricVal = 0;
+                    filtered2.forEach(item => {
+                        if (item.date && !isNaN(item.date.getTime())) {
+                            const d = new Date(item.date);
+                            if (d.getFullYear() === currentYear && d.getMonth() === idx) {
+                                metricVal += (globalMetric === 'shares_retweets' ? ((item.shares || 0) + (item.retweets || 0)) : (item[globalMetric] || 0));
+                            }
+                        }
+                    });
+                    fullMonthlyValues[idx] = metricVal;
+                }
 
-            let chartLabels = fullMonthNames.slice(0, activeMonthCount);
-            let chartValues = fullMonthlyValues;
-
-            if (timelineMode === 'last4' && activeMonthCount > 4) {
-                const startIndex = activeMonthCount - 4;
-                chartLabels = fullMonthNames.slice(startIndex, activeMonthCount);
-                chartValues = fullMonthlyValues.slice(startIndex, activeMonthCount);
+                if (timelineMode === 'last4Months' || timelineMode === 'last4') {
+                    const startIndex = Math.max(0, activeMonthCount - 4);
+                    chartLabels = fullMonthNames.slice(startIndex, activeMonthCount);
+                    chartValues = fullMonthlyValues.slice(startIndex, activeMonthCount);
+                } else {
+                    chartLabels = fullMonthNames.slice(0, activeMonthCount);
+                    chartValues = fullMonthlyValues;
+                }
             }
 
             if (chartsInstances['monthlyLine']) chartsInstances['monthlyLine'].destroy();
