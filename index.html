@@ -525,6 +525,8 @@
         let activePlatformsP = ['instagram', 'facebook', 'tiktok', 'x']; 
 
         let selectedPosts = new Set();
+        let excludedRawIds = new Set(); // NOVO: Armazena IDs crus dos posts excluídos globalmente
+        
         let comparisonMode = 'custom'; 
         let timelineMode = 'last4Months'; 
         let activeTab = 'dashboard';
@@ -806,8 +808,10 @@
 
                 const tags = desc.match(/#[\wÀ-ÿ]+/g); if(tags) tags.forEach(t => hashtagsSet.add(t));
                 accountsSet.add(account);
+                
+                let internalId = Math.random().toString(36).substring(2, 10) + '_' + Date.now();
 
-                parsedList.push({ platform, account, primaryAccount, originFolder, desc, url, type, views, likes, comments, shares, retweets, saves, totalInteracoes, date: dateObj });
+                parsedList.push({ internalId, platform, account, primaryAccount, originFolder, desc, url, type, views, likes, comments, shares, retweets, saves, totalInteracoes, date: dateObj });
             });
             return parsedList;
         }
@@ -850,7 +854,9 @@
                 let totalInteracoes = likes + comments + shares + retweets + saves;
                 accountsSet.add(account);
 
-                parsedList.push({ platform, account, primaryAccount, originFolder, desc, url, type, views, likes, comments, shares, retweets, saves, totalInteracoes, date: dateObj });
+                let internalId = Math.random().toString(36).substring(2, 10) + '_' + Date.now();
+
+                parsedList.push({ internalId, platform, account, primaryAccount, originFolder, desc, url, type, views, likes, comments, shares, retweets, saves, totalInteracoes, date: dateObj });
             });
             return parsedList;
         }
@@ -893,9 +899,10 @@
                 while (groups[key] && groups[key].platforms.has(item.platform)) { key = baseKey + '_' + counter; counter++; }
                 
                 if (!groups[key]) {
-                    groups[key] = { id: key, desc: item.desc, platforms: new Set(), accounts: new Set(), primaryAccounts: new Set(), origins: new Set(), types: new Set(), links: {}, views: 0, likes: 0, comments: 0, shares: 0, retweets: 0, saves: 0, totalInteracoes: 0, date: item.date ? item.date.getTime() : 0 };
+                    groups[key] = { id: key, desc: item.desc, platforms: new Set(), accounts: new Set(), primaryAccounts: new Set(), origins: new Set(), types: new Set(), rawIds: new Set(), links: {}, views: 0, likes: 0, comments: 0, shares: 0, retweets: 0, saves: 0, totalInteracoes: 0, date: item.date ? item.date.getTime() : 0 };
                 }
 
+                groups[key].rawIds.add(item.internalId);
                 groups[key].platforms.add(item.platform); groups[key].accounts.add(item.account); groups[key].origins.add(item.originFolder);
                 if (item.primaryAccount) groups[key].primaryAccounts.add(item.primaryAccount);
                 groups[key].types.add(item.type); groups[key].links[item.platform] = item.url;
@@ -959,9 +966,10 @@
                 while (groups[key] && groups[key].platforms.has(item.platform)) { key = baseKey + '_' + counter; counter++; }
                 
                 if (!groups[key]) {
-                    groups[key] = { id: key, desc: item.desc, platforms: new Set(), accounts: new Set(), primaryAccounts: new Set(), origins: new Set(), types: new Set(), links: {}, views: 0, likes: 0, comments: 0, shares: 0, retweets: 0, saves: 0, totalInteracoes: 0, date: item.date ? item.date.getTime() : 0 };
+                    groups[key] = { id: key, desc: item.desc, platforms: new Set(), accounts: new Set(), primaryAccounts: new Set(), origins: new Set(), types: new Set(), rawIds: new Set(), links: {}, views: 0, likes: 0, comments: 0, shares: 0, retweets: 0, saves: 0, totalInteracoes: 0, date: item.date ? item.date.getTime() : 0 };
                 }
 
+                groups[key].rawIds.add(item.internalId);
                 groups[key].platforms.add(item.platform); groups[key].accounts.add(item.account); groups[key].origins.add(item.originFolder);
                 if (item.primaryAccount) groups[key].primaryAccounts.add(item.primaryAccount);
                 groups[key].types.add(item.type); groups[key].links[item.platform] = item.url;
@@ -1007,11 +1015,48 @@
             updateSelectionBar();
         }
 
+        // NOVO: Função para checar se o grupo está excluído
+        function isGroupExcluded(g) {
+            if(!g || !g.rawIds || g.rawIds.size === 0) return false;
+            return excludedRawIds.has(Array.from(g.rawIds)[0]);
+        }
+
+        // NOVO: Alternar a exclusão de um post
+        function toggleExcludePost(groupId, panel) {
+            let dataset = panel === 'dashboard' ? filteredRankedData : petrobrasRankedData;
+            let group = dataset.find(g => g.id === groupId);
+            if (!group) return;
+
+            let isCurrentlyExcluded = excludedRawIds.has(Array.from(group.rawIds)[0]);
+
+            if (isCurrentlyExcluded) {
+                group.rawIds.forEach(id => excludedRawIds.delete(id));
+            } else {
+                group.rawIds.forEach(id => excludedRawIds.add(id));
+            }
+
+            // Atualiza TUDO dinamicamente
+            updateKPIs();
+            if (activeTab === 'petrobras') updatePetrobrasKPIs();
+            
+            if (panel === 'dashboard') {
+                renderPaginatedRanking();
+                renderWorstRanking();
+            } else {
+                renderPetrobrasRanking();
+            }
+            
+            updateSelectionBar();
+            
+            if (activeTab === 'analytics') renderAnalyticsCharts();
+        }
+
         function updateKPIs() {
             let tViews = 0, tInt = 0, tLikes = 0, tComm = 0, tShare = 0, tRetweets = 0, tSave = 0;
             let platCounts = { instagram: 0, facebook: 0, tiktok: 0, x: 0 }; let totalPostsIndividual = 0;
 
             filteredRankedData.forEach(g => {
+                if (isGroupExcluded(g)) return; // Ignora se estiver excluído
                 tViews += g.views; tInt += g.totalInteracoes; tLikes += g.likes; tComm += g.comments; tShare += g.shares; tRetweets += g.retweets; tSave += g.saves;
                 g.platforms.forEach(p => { if(platCounts[p] !== undefined) { platCounts[p]++; totalPostsIndividual++; } });
             });
@@ -1039,6 +1084,7 @@
             let platCounts = { instagram: 0, facebook: 0, tiktok: 0, x: 0 }; let totalPostsIndividual = 0;
 
             petrobrasRankedData.forEach(g => {
+                if (isGroupExcluded(g)) return; // Ignora se estiver excluído
                 tViews += g.views; tInt += g.totalInteracoes; tLikes += g.likes; tComm += g.comments; tShare += g.shares; tRetweets += g.retweets; tSave += g.saves;
                 g.platforms.forEach(p => { if(platCounts[p] !== undefined) { platCounts[p]++; totalPostsIndividual++; } });
             });
@@ -1073,7 +1119,9 @@
             let currentDataset = activeTab === 'petrobras' ? petrobrasRankedData : filteredRankedData;
 
             currentDataset.forEach(item => {
-                if (selectedPosts.has(item.id)) { sViews += item.views; sInt += item.totalInteracoes; sLikes += item.likes; sComm += item.comments; sShare += item.shares; sRetweets += item.retweets; }
+                if (selectedPosts.has(item.id) && !isGroupExcluded(item)) { 
+                    sViews += item.views; sInt += item.totalInteracoes; sLikes += item.likes; sComm += item.comments; sShare += item.shares; sRetweets += item.retweets; 
+                }
             });
             
             document.getElementById('sel-count').innerText = selectedPosts.size;
@@ -1114,8 +1162,13 @@
             }
 
             const isChecked = selectedPosts.has(item.id) ? 'checked' : '';
+            const isExcluded = isGroupExcluded(item);
             let sortBy = document.getElementById(panel === 'dashboard' ? 'sortOrder' : 'p-sortOrder').value; 
             if (sortBy === 'date') sortBy = 'views'; 
+            
+            const cardWrapperClass = isExcluded 
+                ? "bg-rose-50/40 opacity-75 grayscale-[20%]" 
+                : "hover:bg-slate-50/80";
 
             const metricsList = [
                 { id: 'totalInteracoes', label: 'Interações', val: item.totalInteracoes, style: metricStyles.totalInteracoes },
@@ -1128,34 +1181,42 @@
 
             let metricsHtml = metricsList.map(m => {
                 if (m.id === sortBy) {
-                    return `<div class="${m.style.bg} px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-center border ${m.style.border} min-w-[80px]">
+                    return `<div class="${m.style.bg} px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-center border ${m.style.border} min-w-[80px] ${isExcluded ? 'opacity-60' : ''}">
                                 <p class="text-[9px] sm:text-[10px] ${m.style.textSm} font-bold uppercase tracking-wider mb-0.5">${m.label}</p>
-                                <p class="text-lg sm:text-xl font-bold ${m.style.textLg}">${m.val.toLocaleString('pt-BR')}</p>
+                                <p class="text-lg sm:text-xl font-bold ${m.style.textLg}">${isExcluded ? '<del>' : ''}${m.val.toLocaleString('pt-BR')}${isExcluded ? '</del>' : ''}</p>
                             </div>`;
                 } else {
                     return `<div class="text-center px-1 sm:px-2 flex flex-col items-center justify-center" title="${m.label}">
                                 <div class="flex justify-center ${m.style.defaultColor} mb-1 opacity-80"><i data-lucide="${m.style.icon}" class="w-4 h-4"></i></div>
-                                <p class="text-sm font-bold text-slate-700">${m.val.toLocaleString('pt-BR')}</p>
+                                <p class="text-sm font-bold text-slate-700 ${isExcluded ? 'opacity-60 line-through' : ''}">${m.val.toLocaleString('pt-BR')}</p>
                             </div>`;
                 }
             }).join('');
 
             return `
-            <div class="p-4 sm:p-6 flex flex-col sm:flex-row items-start gap-6 hover:bg-slate-50/80 transition border-b border-slate-100 last:border-0 relative">
-                <div class="w-10 flex flex-col items-center gap-3 flex-shrink-0 self-start xl:self-center">
+            <div class="p-4 sm:p-6 flex flex-col sm:flex-row items-start gap-6 transition border-b border-slate-100 last:border-0 relative ${cardWrapperClass}">
+                <div class="w-10 flex flex-col items-center gap-5 flex-shrink-0 self-start xl:self-center">
                     <span class="font-bold text-slate-400 text-sm">#${rankIndex}</span>
-                    <input type="checkbox" onchange="toggleSelectPost('${item.id}')" ${isChecked} class="post-checkbox w-5 h-5 text-indigo-600 bg-slate-100 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer shadow-sm">
+                    <div class="flex flex-col items-center gap-1.5" title="Somar na barra preta inferior">
+                        <i data-lucide="plus-circle" class="w-4 h-4 text-indigo-400"></i>
+                        <input type="checkbox" onchange="toggleSelectPost('${item.id}')" ${isChecked} class="post-checkbox w-5 h-5 text-indigo-600 bg-slate-100 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer shadow-sm">
+                    </div>
+                    <div class="flex flex-col items-center gap-1.5 pt-3 border-t border-slate-200/60" title="Excluir estatísticas deste post globalmente">
+                        <i data-lucide="ban" class="w-4 h-4 text-rose-400"></i>
+                        <input type="checkbox" onchange="toggleExcludePost('${item.id}', '${panel}')" ${isExcluded ? 'checked' : ''} class="w-5 h-5 text-rose-500 bg-rose-50 border-rose-300 rounded focus:ring-rose-500 cursor-pointer shadow-sm">
+                    </div>
                 </div>
                 ${mediaBlock}
                 <div class="flex-1 w-full text-left space-y-3 pt-2">
                     <div class="flex items-center gap-2 flex-wrap">
                         <div class="flex gap-1.5 mr-1 text-white">
-                            ${plats.map(p => `<a href="${item.links[p] || '#'}" target="_blank" title="Ver no ${p}" class="inline-flex items-center justify-center w-7 h-7 rounded-lg plat-bg-${p} shadow-sm hover:opacity-80 transition text-white">${getPlatformSVG(p, "w-4 h-4 text-white")}</a>`).join('')}
+                            ${plats.map(p => `<a href="${item.links[p] || '#'}" target="_blank" title="Ver no ${p}" class="inline-flex items-center justify-center w-7 h-7 rounded-lg plat-bg-${p} shadow-sm hover:opacity-80 transition text-white ${isExcluded ? 'grayscale' : ''}">${getPlatformSVG(p, "w-4 h-4 text-white")}</a>`).join('')}
                         </div>
                         <span class="inline-block text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg">@${Array.from(item.accounts).join(', @')}</span>
                         <span class="inline-block text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">${Array.from(item.types).join(' / ')}</span>
+                        ${isExcluded ? `<span class="inline-block text-[10px] font-black uppercase text-rose-600 bg-rose-100 px-2 py-1 rounded-lg border border-rose-200 ml-auto">Excluído das Contagens</span>` : ''}
                     </div>
-                    <p class="text-xs sm:text-sm font-medium line-clamp-3 text-slate-800 mt-2 pr-4 leading-relaxed">${item.desc}</p>
+                    <p class="text-xs sm:text-sm font-medium line-clamp-3 ${isExcluded ? 'text-slate-500' : 'text-slate-800'} mt-2 pr-4 leading-relaxed">${item.desc}</p>
                     <div class="flex flex-wrap gap-3 sm:gap-6 pt-4 border-t border-slate-100 mt-4 items-center">
                         ${metricsHtml}
                     </div>
@@ -1344,6 +1405,7 @@
                 const isCurrentMonthB = (yB === currentYear && mBNum === currentMonth);
 
                 filtered1.forEach(item => {
+                    if (excludedRawIds.has(item.internalId)) return; // Ignora excluídos globais
                     if (item.date && !isNaN(item.date.getTime())) {
                         const d = new Date(item.date); const y = d.getFullYear(); const m = d.getMonth() + 1; const day = d.getDate();
                         const key = `${y}-${String(m).padStart(2,'0')}`;
@@ -1380,6 +1442,7 @@
                 labelA = `${fmt(prevStart)} a ${fmt(prevEnd)}`;
 
                 filtered1.forEach(item => {
+                    if (excludedRawIds.has(item.internalId)) return; // Ignora excluídos globais
                     if (item.date && !isNaN(item.date.getTime())) {
                         const t = item.date.getTime();
                         let metricVal = globalMetric === 'shares_retweets' ? ((item.shares || 0) + (item.retweets || 0)) : (item[globalMetric] || 0);
@@ -1418,6 +1481,7 @@
             const globalMetric = document.getElementById('globalAnalMetric').value;
             const formatMonth = document.getElementById('formatMonthSelect').value;
             const filteredFormats = filterDataByAccount(allPosts, globalAcc).filter(item => {
+                if (excludedRawIds.has(item.internalId)) return false; // Ignora excluídos globais
                 if (formatMonth === 'todos') return true;
                 if (!item.date || isNaN(item.date.getTime())) return false;
                 const d = new Date(item.date);
@@ -1448,6 +1512,7 @@
             const socialMonth = document.getElementById('socialMonthSelect').value;
 
             const filteredSocial = filterDataByAccount(allPosts, globalAcc).filter(item => {
+                if (excludedRawIds.has(item.internalId)) return false; // Ignora excluídos globais
                 if (socialFormat !== 'Todos' && item.type !== socialFormat) return false;
                 if (socialMonth !== 'todos') {
                     if (!item.date || isNaN(item.date.getTime())) return false;
@@ -1508,6 +1573,7 @@
                 }
                 
                 filtered2.forEach(item => {
+                    if (excludedRawIds.has(item.internalId)) return; // Ignora excluídos globais
                     if (item.date && !isNaN(item.date.getTime())) {
                         const t = item.date.getTime();
                         for (let b of buckets) {
@@ -1532,6 +1598,7 @@
                 for (let idx = 0; idx < activeMonthCount; idx++) {
                     let metricVal = 0;
                     filtered2.forEach(item => {
+                        if (excludedRawIds.has(item.internalId)) return; // Ignora excluídos globais
                         if (item.date && !isNaN(item.date.getTime())) {
                             const d = new Date(item.date);
                             if (d.getFullYear() === currentYear && d.getMonth() === idx) {
@@ -1580,6 +1647,7 @@
             for (let idx = 0; idx < 12; idx++) {
                 let pCount = 0, vCount = 0, iCount = 0, lCount = 0, cCount = 0, sCount = 0, rCount = 0;
                 filtered2.forEach(item => {
+                    if (excludedRawIds.has(item.internalId)) return; // Ignora excluídos globais
                     if (item.date && !isNaN(item.date.getTime())) {
                         const d = new Date(item.date);
                         if (d.getFullYear() === currentYear && d.getMonth() === idx) {
